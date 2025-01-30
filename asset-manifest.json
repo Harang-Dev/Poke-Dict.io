@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Poke-Dict.io/static/css/main.e6c13ad2.css",
-    "main.js": "/Poke-Dict.io/static/js/main.81af52e1.js",
+    "main.js": "/Poke-Dict.io/static/js/main.a09739cb.js",
     "static/js/146.8f633756.chunk.js": "/Poke-Dict.io/static/js/146.8f633756.chunk.js",
     "index.html": "/Poke-Dict.io/index.html",
     "main.e6c13ad2.css.map": "/Poke-Dict.io/static/css/main.e6c13ad2.css.map",
-    "main.81af52e1.js.map": "/Poke-Dict.io/static/js/main.81af52e1.js.map",
+    "main.a09739cb.js.map": "/Poke-Dict.io/static/js/main.a09739cb.js.map",
     "146.8f633756.chunk.js.map": "/Poke-Dict.io/static/js/146.8f633756.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.81af52e1.js"
+    "static/js/main.a09739cb.js"
   ]
 }
