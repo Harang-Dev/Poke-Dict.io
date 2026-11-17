@@ -1,3 +1,4 @@
+import { movePath, pokemonPath } from '../paths';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -66,7 +67,7 @@ function VersionMoves({ pokemon, version }) {
               return (
                 <li key={`${move.name}:${level}:${index}`}>
                   {method === 'level-up' && <small>{level > 0 ? `Lv. ${level}` : '레벨 정보 없음'}</small>}
-                  {item ? <Link to={`/moves/${item.id}`}>{item.name}</Link> : readableName(move.name)}
+                  {item ? <Link to={movePath(item.id)}>{item.name}</Link> : readableName(move.name)}
                   {item && <span className="type-badge" data-type={item.type}>{typeNames[item.type] ?? item.type}</span>}
                 </li>
               );
@@ -137,7 +138,7 @@ function EvolutionAcquisition({ pokemon, species, chain, version }) {
   return (
     <section>
       <h3>진화로 획득</h3>
-      <p>진화 전 <Link to={`/pokemon/${previous.id}`}>{previous.name}</Link></p>
+      <p>진화 전 <Link to={pokemonPath(previous.id)}>{previous.name}</Link></p>
       <ul>{details.map((detail, index) => <li key={index}>{evolutionConditions(detail).join(' · ')}</li>)}</ul>
     </section>
   );

@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { Button } from '../components/ui/button';
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -112,7 +113,7 @@ function CollectionActions({ entry }) {
       <Button type="button" aria-pressed={shiny} onClick={() => toggle('shiny', entry.id)}>
         {shiny ? '색이 다른 모습 기록 해제' : '색이 다른 모습 등록'}
       </Button>
-      <Button asChild><Link to={`/compare?pokemon=${entry.id}`}>포켓몬 비교</Link></Button>
+      <Button asChild><Link to={`/compare/?pokemon=${entry.id}`}>포켓몬 비교</Link></Button>
     </div>
   );
 }
@@ -133,8 +134,8 @@ function AdjacentPokemon({ number }) {
   const next = defaultEntries[index + 1];
   return (
     <nav className="adjacent section-nav" aria-label="이전·다음 포켓몬">
-      {previous && <Link to={`/pokemon/${previous.id}`}>← {formatPokemonNumber(previous.number)} {previous.name}</Link>}
-      {next && <Link to={`/pokemon/${next.id}`}>{formatPokemonNumber(next.number)} {next.name} →</Link>}
+      {previous && <Link to={pokemonPath(previous.id)}>← {formatPokemonNumber(previous.number)} {previous.name}</Link>}
+      {next && <Link to={pokemonPath(next.id)}>{formatPokemonNumber(next.number)} {next.name} →</Link>}
     </nav>
   );
 }

@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { Button } from '../components/ui/button';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -65,7 +66,7 @@ function QuizRound({ day, answer }) {
             {solved ? '정답이에요!' : '정답 공개'}<span className="sr-only"> {answer.name}</span>
           </span>
           <Button asChild variant="default" className="no-underline">
-            <Link to={`/pokemon/${answer.id}`}>포켓몬 상세 보기</Link>
+            <Link to={pokemonPath(answer.id)}>포켓몬 상세 보기</Link>
           </Button>
         </div>
       ) : (

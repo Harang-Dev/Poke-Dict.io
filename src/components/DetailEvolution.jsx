@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { evolutionOptions } from '../api/pokeApi';
@@ -16,7 +17,7 @@ export default function DetailEvolution({ id, number, species }) {
           <h2>폼</h2>
           <ul className="link-chips">{forms.map((form) => (
             <li key={form.id}>
-              <Link to={`/pokemon/${form.id}`} aria-current={form.id === id ? 'page' : undefined}>{form.name}</Link>
+              <Link to={pokemonPath(form.id)} aria-current={form.id === id ? 'page' : undefined}>{form.name}</Link>
             </li>
           ))}</ul>
         </section>
@@ -40,7 +41,7 @@ function EvolutionNode({ node, current }) {
   return (
     <li>
       {entry ? (
-        <Link to={`/pokemon/${entry.id}`} aria-current={number === current ? 'page' : undefined}>
+        <Link to={pokemonPath(entry.id)} aria-current={number === current ? 'page' : undefined}>
           {formatPokemonNumber(number)} {entry.name}
         </Link>
       ) : <span>{node.species.name}</span>}

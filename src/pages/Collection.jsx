@@ -25,7 +25,7 @@ export default function Collection() {
       <h1>내 컬렉션</h1>
       <nav className="section-nav collection-nav" aria-label="컬렉션">
         {[['favorites', '즐겨찾기'], ['checklist', '도감 체크'], ['binders', '바인더'], ['backup', '백업']].map(([id, name]) => (
-          <Link key={id} aria-current={tab === id ? 'page' : undefined} to={`/collection?tab=${id}`}>{name}</Link>
+          <Link key={id} aria-current={tab === id ? 'page' : undefined} to={`/collection/?tab=${id}`}>{name}</Link>
         ))}
       </nav>
       {tab === 'checklist' ? <Checklist /> : tab === 'binders' ? (
@@ -198,7 +198,7 @@ function BinderEditor({ binder, onDelete }) {
         );
       }} />
       <div className="action-row">
-        <ShareLink to={{ pathname: '/binder', search: shareParams.toString() }}>바인더 공유</ShareLink>
+        <ShareLink to={{ pathname: '/binder/', search: shareParams.toString() }}>바인더 공유</ShareLink>
         <Button type="button" onClick={onDelete}>바인더 삭제</Button>
       </div>
     </section>

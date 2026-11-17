@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { Button } from '../components/ui/button';
 import { Link, useSearchParams } from 'react-router-dom';
 import { entryById, parsePokemonIds, statNames, statTotal, typeNames } from '../dex/catalogue';
@@ -44,7 +45,7 @@ export default function Compare() {
                   <th scope="col">비교 항목</th>
                   {entries.map((entry) => (
                     <th key={entry.id} scope="col">
-                      <Link className="comparison-pokemon" to={`/pokemon/${entry.id}`}>
+                      <Link className="comparison-pokemon" to={pokemonPath(entry.id)}>
                         <PokemonSprite key={entry.id} entry={entry} />
                         <span className="meta-badge">{formatPokemonNumber(entry.number)}</span>
                         <span>{entry.name}</span>
@@ -62,7 +63,7 @@ export default function Compare() {
               ))}</tbody>
             </table>
           </div>
-          <ShareLink to={{ pathname: '/compare', search: new URLSearchParams({ pokemon: selected.join(',') }).toString() }}>
+          <ShareLink to={{ pathname: '/compare/', search: new URLSearchParams({ pokemon: selected.join(',') }).toString() }}>
             비교 링크 공유
           </ShareLink>
         </>
