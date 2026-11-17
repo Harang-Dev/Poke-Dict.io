@@ -1,39 +1,8 @@
-import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 
 const API = new URL('https://pokeapi.co/api/v2/');
-const PAGE_SIZE = 20;
 const RESOURCE_STALE_TIME = 60 * 60 * 1000;
 const RESOURCE_CACHE_TIME = RESOURCE_STALE_TIME;
-
-export function pokemonListOptions() {
-  return infiniteQueryOptions({
-    queryKey: ['pokemon-list'],
-    initialPageParam: new URL(`pokemon/?limit=${PAGE_SIZE}&offset=0`, API).href,
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await fetchPokemonListPage(pageParam, signal);
-      return {
-        pokemon: page.results.map(({ name, url }) => {
-          const id = resourceId(url, 'pokemon');
-          if (!id) {
-            throw new Error('Invalid PokéAPI resource URL');
-          }
-          return { id, name };
-        }),
-        next: page.next,
-      };
-    },
-    getNextPageParam: (page) => page.next ?? undefined,
-    staleTime: RESOURCE_STALE_TIME,
-  });
-}
-
-async function fetchPokemonListPage(value, signal) {
-  const url = apiUrl(value);
-  if (url.pathname !== '/api/v2/pokemon/') {
-    throw new Error('Invalid PokéAPI list URL');
-  }
-  return fetchJson(url, signal);
-}
 
 export function isPokemonId(value) {
   return typeof value === 'string' && /^[1-9][0-9]*$/.test(value);
@@ -59,6 +28,28 @@ export function typeOptions(type) {
 
 export function abilityOptions(ability) {
   return namedResourceOptions('ability', ability);
+}
+
+export function evolutionOptions(species) {
+  return namedResourceOptions('evolution-chain', species?.evolution_chain);
+}
+
+export function moveOptions(id) {
+  return queryOptions({
+    queryKey: ['move', id],
+    enabled: isPokemonId(id),
+    queryFn: ({ signal }) => fetchJson(new URL(`move/${id}/`, API), signal),
+    staleTime: RESOURCE_STALE_TIME,
+  });
+}
+
+export function encounterOptions(id) {
+  return queryOptions({
+    queryKey: ['encounters', id],
+    enabled: isPokemonId(id),
+    queryFn: ({ signal }) => fetchJson(new URL(`pokemon/${id}/encounters`, API), signal),
+    staleTime: RESOURCE_STALE_TIME,
+  });
 }
 
 function namedResourceOptions(kind, resource) {
