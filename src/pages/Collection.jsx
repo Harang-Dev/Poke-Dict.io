@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { useId, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import regionalDexes from '../data/regional.json';
 import { defaultEntries, entryById, parsePokemonIds, speciesByNumber } from '../dex/catalogue';
 import { binderLimit, cardLimit, parseCollection, useCollection } from '../dex/collection';
 import PokeCardList from '../components/PokeCardList';
 import PokemonPicker from '../components/PokemonPicker';
+import { Checkbox } from '../components/ui/checkbox';
+import { Progress } from '../components/ui/progress';
+import SelectField from '../components/SelectField';
 import ShareLink from '../components/ShareLink';
 
 const dexes = [{ id: 'national', name: '전국도감', numbers: defaultEntries.map((entry) => entry.number) }, ...regionalDexes];
@@ -18,7 +23,7 @@ export default function Collection() {
   return (
     <main className="workspace">
       <h1>내 컬렉션</h1>
-      <nav className="section-nav" aria-label="컬렉션">
+      <nav className="section-nav collection-nav" aria-label="컬렉션">
         {[['favorites', '즐겨찾기'], ['checklist', '도감 체크'], ['binders', '바인더'], ['backup', '백업']].map(([id, name]) => (
           <Link key={id} aria-current={tab === id ? 'page' : undefined} to={`/collection?tab=${id}`}>{name}</Link>
         ))}
@@ -26,12 +31,11 @@ export default function Collection() {
       {tab === 'checklist' ? <Checklist /> : tab === 'binders' ? (
         <Binders selectedId={params.get('binder')} onSelect={(binder) => setParams({ tab: 'binders', ...(binder && { binder }) })} />
       ) : tab === 'backup' ? <Backup /> : (
-        <section>
-          <h2>즐겨찾기</h2>
-          {favorites.length === 0 ? <p>상세 화면에서 즐겨찾기에 추가한 카드를 모아 볼 수 있어요.</p> : (
+        <section aria-label="즐겨찾기">
+          {favorites.length === 0 ? <p>즐겨찾기가 비어 있습니다.</p> : (
             <PokeCardList entries={favorites} renderActions={(entry) => (
-              <button className="tile-action" type="button" onClick={() => toggle('favorites', entry.id)}
-                aria-label={`${entry.name} 즐겨찾기 해제`}>즐겨찾기 해제</button>
+              <Button className="tile-action" type="button" onClick={() => toggle('favorites', entry.id)}
+                aria-label={`${entry.name} 즐겨찾기 해제`}>즐겨찾기 해제</Button>
             )} />
           )}
         </section>
@@ -53,30 +57,38 @@ function Checklist() {
   const visible = missingOnly ? catalogue.filter((entry) => !active.has(keyFor(entry))) : catalogue;
 
   return (
-    <section>
-      <h2>도감 체크</h2>
+    <section className="section-stack" aria-label="도감 체크">
       <div className="filter-row">
-        <label>도감
-          <select value={dexId} onChange={(event) => setDexId(event.target.value)}>
-            {dexes.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
-          </select>
-        </label>
-        <label className="checkbox-row"><input type="checkbox" checked={missingOnly}
-          onChange={(event) => setMissingOnly(event.target.checked)} /> 미등록만 보기</label>
-        <label className="checkbox-row"><input type="checkbox" checked={shinyMode}
-          onChange={(event) => setShinyMode(event.target.checked)} /> 색이 다른 모습 도감</label>
+        <SelectField label="도감" value={dexId} onChange={setDexId}
+          options={dexes.map(({ id, name }) => [id, name])} />
+        <ChecklistOption checked={missingOnly} onChange={setMissingOnly}>미등록만 보기</ChecklistOption>
+        <ChecklistOption checked={shinyMode} onChange={setShinyMode}>색이 다른 모습 도감</ChecklistOption>
       </div>
-      <p role="status">{count} / {catalogue.length} 등록 · {catalogue.length ? Math.round(count / catalogue.length * 100) : 0}%</p>
-      <progress aria-label="도감 완성률" value={count} max={catalogue.length || 1} />
-      {shinyMode && <p>기본 모습 기준이에요. 개별 폼의 기록은 각 상세 화면에서 확인할 수 있어요.</p>}
+      <div className="checklist-progress">
+        <div className="section-heading">
+          <span className="meta-badge" role="status">{count} / {catalogue.length} 등록 · {catalogue.length ? Math.round(count / catalogue.length * 100) : 0}%</span>
+          {shinyMode && <span className="meta-badge">기본 폼 기준</span>}
+        </div>
+        <Progress aria-label="도감 완성률" value={count} max={catalogue.length || 1} />
+      </div>
       <PokeCardList key={`${dexId}:${shinyMode}:${missingOnly}`} entries={visible} renderActions={(entry) => (
-        <button className="tile-action" type="button" aria-pressed={active.has(keyFor(entry))}
+        <Button className="tile-action" type="button" aria-pressed={active.has(keyFor(entry))}
           aria-label={`${entry.name} ${shinyMode ? '색이 다른 모습' : '잡은 포켓몬'} 체크`}
           onClick={() => toggle(shinyMode ? 'shiny' : 'caught', keyFor(entry))}>
           {active.has(keyFor(entry)) ? '등록 완료' : '등록하기'}
-        </button>
+        </Button>
       )} />
     </section>
+  );
+}
+
+function ChecklistOption({ checked, onChange, children }) {
+  const id = useId();
+  return (
+    <div className="checkbox-row">
+      <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
+      <label htmlFor={id}>{children}</label>
+    </div>
   );
 }
 
@@ -98,19 +110,15 @@ function Binders({ selectedId, onSelect }) {
   }
 
   return (
-    <section>
-      <h2>카드 바인더</h2>
+    <section className="section-stack" aria-label="카드 바인더">
       <form className="inline-form" onSubmit={create}>
-        <label>새 바인더 이름<input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
-        <button type="submit" disabled={!name.trim() || data.binders.length >= binderLimit}>바인더 만들기</button>
+        <label>새 바인더 이름<Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+        <Button type="submit" disabled={!name.trim() || data.binders.length >= binderLimit}>바인더 만들기</Button>
       </form>
       {selected && (
         <>
-          <label>바인더 선택
-            <select value={selected.id} onChange={(event) => onSelect(event.target.value)}>
-              {data.binders.map((binder) => <option key={binder.id} value={binder.id}>{binder.name}</option>)}
-            </select>
-          </label>
+          <SelectField label="바인더 선택" value={selected.id} onChange={onSelect}
+            options={data.binders.map((binder) => [binder.id, binder.name])} />
           <BinderEditor key={selected.id} binder={selected} onDelete={() => {
             update((current) => ({ ...current, binders: current.binders.filter((binder) => binder.id !== selected.id) }));
             onSelect(null);
@@ -157,25 +165,22 @@ function BinderEditor({ binder, onDelete }) {
   const favoriteCandidates = data.favorites.filter((id) => !binder.cards.includes(id)).map((id) => entryById.get(id)).filter(Boolean);
 
   return (
-    <div className="panel section-stack">
-      <h3>{binder.name}</h3>
+    <section className="panel section-stack" aria-label={binder.name}>
       <form className="inline-form" onSubmit={(event) => {
         event.preventDefault();
         if (name.trim()) {
           edit((item) => ({ ...item, name: name.trim() }));
         }
       }}>
-        <label>바인더 이름<input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
-        <button type="submit" disabled={!name.trim() || name.trim() === binder.name}>이름 저장</button>
+        <label>바인더 이름<Input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+        <Button type="submit" disabled={!name.trim() || name.trim() === binder.name}>이름 저장</Button>
       </form>
       {binder.cards.length < cardLimit && (
         <>
-          {favoriteCandidates.length > 0 && <label>즐겨찾기에서 추가
-            <select value="" onChange={(event) => add(event.target.value)}>
-              <option value="" disabled>포켓몬 선택</option>
-              {favoriteCandidates.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
-            </select>
-          </label>}
+          {favoriteCandidates.length > 0 && (
+            <SelectField label="즐겨찾기에서 추가" value="" onChange={add} placeholder="포켓몬 선택"
+              options={favoriteCandidates.map((entry) => [entry.id, entry.name])} />
+          )}
           <PokemonPicker label="도감에서 카드 추가" onPick={add} excluded={binder.cards} />
         </>
       )}
@@ -183,20 +188,20 @@ function BinderEditor({ binder, onDelete }) {
         const index = binder.cards.indexOf(entry.id);
         return (
           <div className="tile-controls">
-            <button type="button" onClick={() => move(entry.id, -1)} disabled={index === 0}
-              aria-label={`${entry.name} 앞으로 이동`}>←</button>
-            <button type="button" onClick={() => move(entry.id, 1)} disabled={index === binder.cards.length - 1}
-              aria-label={`${entry.name} 뒤로 이동`}>→</button>
-            <button type="button" onClick={() => edit((item) => ({ ...item, cards: item.cards.filter((id) => id !== entry.id) }))}
-              aria-label={`${entry.name} 바인더에서 빼기`}>빼기</button>
+            <Button type="button" onClick={() => move(entry.id, -1)} disabled={index === 0}
+              aria-label={`${entry.name} 앞으로 이동`}>←</Button>
+            <Button type="button" onClick={() => move(entry.id, 1)} disabled={index === binder.cards.length - 1}
+              aria-label={`${entry.name} 뒤로 이동`}>→</Button>
+            <Button type="button" onClick={() => edit((item) => ({ ...item, cards: item.cards.filter((id) => id !== entry.id) }))}
+              aria-label={`${entry.name} 바인더에서 빼기`}>빼기</Button>
           </div>
         );
       }} />
       <div className="action-row">
         <ShareLink to={{ pathname: '/binder', search: shareParams.toString() }}>바인더 공유</ShareLink>
-        <button type="button" onClick={onDelete}>바인더 삭제</button>
+        <Button type="button" onClick={onDelete}>바인더 삭제</Button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -210,6 +215,7 @@ export function SharedBinder() {
 function Backup() {
   const { data, update } = useCollection();
   const [status, setStatus] = useState(null);
+  const backupInput = useRef(null);
 
   function download() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -239,12 +245,12 @@ function Backup() {
   }
 
   return (
-    <section className="section-stack">
-      <h2>컬렉션 백업</h2>
-      <p>이 브라우저에 저장한 기록을 파일로 옮기거나, 백업 파일을 현재 기록과 합칠 수 있어요.</p>
+    <section className="section-stack" aria-label="컬렉션 백업">
       <div className="action-row">
-        <button type="button" onClick={download}>백업 내보내기</button>
-        <label>백업 가져오기<input type="file" accept=".json,application/json" onChange={restore} /></label>
+        <Button type="button" onClick={download}>백업 내보내기</Button>
+        <Button aria-describedby="backup-merge" onClick={() => backupInput.current?.click()}>백업 가져오기</Button>
+        <span id="backup-merge" className="meta-badge">기존 기록에 병합</span>
+        <input ref={backupInput} hidden aria-label="백업 파일" type="file" accept=".json,application/json" onChange={restore} />
       </div>
       {status && <p role={status.error ? 'alert' : 'status'}>{status.message}</p>}
     </section>

@@ -5,6 +5,7 @@ import {
   koreanName,
   typeOptions,
 } from '../api/pokeApi';
+import Disclosure from './Disclosure';
 import RequestError from './RequestError';
 
 const statLabels = {
@@ -19,8 +20,7 @@ const statLabels = {
 export default function DetailTypeBox({ pokemon }) {
   return (
     <div className="detail-info">
-      <section className="panel" aria-labelledby="type-title">
-        <h2 id="type-title">타입</h2>
+      <section className="panel" aria-label="타입">
         <ul className="type-list">
           {pokemon.types.map(({ type }) => <TypeBadge key={type.name} type={type} />)}
         </ul>
@@ -70,8 +70,7 @@ function Ability({ ability }) {
 
   return (
     <li>
-      <details>
-        <summary>{name}</summary>
+      <Disclosure title={name}>
         {query.isError ? (
           <RequestError
             message="특성 설명을 불러오지 못했어요."
@@ -83,7 +82,7 @@ function Ability({ ability }) {
         ) : (
           <p>{koreanAbilityDescription(query.data) || '한국어 설명이 없어요.'}</p>
         )}
-      </details>
+      </Disclosure>
     </li>
   );
 }

@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/button';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { defaultEntries, entryById, typeNames } from '../dex/catalogue';
@@ -47,7 +48,6 @@ function QuizRound({ day, answer }) {
   return (
     <main className="workspace quiz">
       <h1>오늘의 실루엣</h1>
-      <p><time dateTime={day}>{day}</time> · 한국 시간 기준</p>
       <div className="pokemon-card pokemon-card--quiz" data-flipped={finished}>
         <CardFaces
           front={<span className="pokemon-card__media"><PokemonSprite entry={answer} silhouette /></span>}
@@ -60,23 +60,40 @@ function QuizRound({ day, answer }) {
         />
       </div>
       {finished ? (
-        <div>
-          <p role="status">{solved ? '정답이에요!' : '오늘의 정답'} {answer.name}</p>
-          <Link to={`/pokemon/${answer.id}`}>포켓몬 상세 보기</Link>
+        <div className="quiz-result">
+          <span className="meta-badge" data-tone={solved ? 'success' : undefined} role="status">
+            {solved ? '정답이에요!' : '정답 공개'}<span className="sr-only"> {answer.name}</span>
+          </span>
+          <Button asChild variant="default" className="no-underline">
+            <Link to={`/pokemon/${answer.id}`}>포켓몬 상세 보기</Link>
+          </Button>
         </div>
       ) : (
         <>
-          <ul className="quiz-hints">
-            <li>{guesses.length >= 1 ? `타입 · ${answer.types.map((type) => typeNames[type] ?? type).join(' · ')}` : '한 번 도전하면 타입 힌트를 볼 수 있어요.'}</li>
-            {guesses.length >= 2 && <li>세대 · {answer.generation}세대</li>}
-            {guesses.length >= 3 && answer.height != null && <li>키 · {answer.height / 10} m</li>}
-          </ul>
+          {guesses.length > 0 && (
+            <ul className="quiz-badges" aria-label="힌트">
+              {answer.types.map((type) => <li key={type} className="type-badge" data-type={type}>{typeNames[type] ?? type}</li>)}
+              {guesses.length >= 2 && <li className="meta-badge">{answer.generation}세대</li>}
+              {guesses.length >= 3 && answer.height != null && <li className="meta-badge">키 {answer.height / 10} m</li>}
+            </ul>
+          )}
           {guesses.length < 20 && <PokemonPicker label="정답 입력" options={defaultEntries} excluded={guesses}
             onPick={(id) => save([...guesses, id], false)} />}
-          <button type="button" onClick={() => save(guesses, true)}>정답 공개</button>
+          <Button variant="ghost" type="button" onClick={() => save(guesses, true)}>정답 공개</Button>
         </>
       )}
-      {guesses.length > 0 && <p>시도한 포켓몬 · {guesses.map((id) => entryById.get(id)?.name).filter(Boolean).join(', ')}</p>}
+      {guesses.length > 0 && (
+        <div className="quiz-guesses">
+          <span>시도 {guesses.length}회</span>
+          <ul className="quiz-badges" aria-label="시도한 포켓몬">
+            {guesses.map((id) => (
+              <li key={id} className="meta-badge" data-tone={id === answer.id ? 'success' : undefined}>
+                {entryById.get(id)?.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </main>
   );
 }

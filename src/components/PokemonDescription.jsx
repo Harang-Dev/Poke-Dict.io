@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import SelectField from './SelectField';
 import { gameVersionName } from '../dex/versions';
 
 export default function PokemonDescription({ species }) {
@@ -12,13 +13,11 @@ export default function PokemonDescription({ species }) {
   const version = descriptions.has(selected) ? selected : descriptions.keys().next().value;
 
   return (
-    <section className="panel">
-      <h2>도감 설명</h2>
+    <section className="panel" aria-label="도감 설명">
       {descriptions.size ? (
         <>
-          <label>도감 설명 버전<select value={version} onChange={(event) => setSelected(event.target.value)}>
-            {[...descriptions.keys()].map((id) => <option key={id} value={id}>{gameVersionName(id)}</option>)}
-          </select></label>
+          <SelectField label="도감 설명 버전" value={version} onChange={setSelected}
+            options={[...descriptions.keys()].map((id) => [id, gameVersionName(id)])} />
           <p>{descriptions.get(version)}</p>
         </>
       ) : <p>한국어 도감 설명이 없어요.</p>}

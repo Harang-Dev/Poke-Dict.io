@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
 
 const api = 'https://pokeapi.co/api/v2';
@@ -55,6 +55,25 @@ function start(hash, responses = {}) {
   return fetch;
 }
 
+async function chooseOption(field, name) {
+  const trigger = await screen.findByRole('combobox', { name: field });
+  fireEvent.keyDown(trigger, { key: 'Enter' });
+  const option = await screen.findByRole('option', { name });
+  fireEvent.keyDown(option, { key: 'Enter' });
+}
+
+const originalScrollIntoView = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+beforeAll(() => {
+  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: () => {} });
+});
+afterAll(() => {
+  if (originalScrollIntoView) {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', originalScrollIntoView);
+  } else {
+    delete Element.prototype.scrollIntoView;
+  }
+});
+
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   cleanup();
@@ -80,9 +99,9 @@ test('opens a form directly, shows the national number and keeps measurements wi
   await userEvent.click(screen.getByRole('button', { name: '색이 다른 모습 보기' }));
   expect(screen.getByRole('img', { name: '테오키스 색이 다른 앞모습' })).toBeTruthy();
 
-  const ability = await screen.findByText('프레셔');
+  const ability = await screen.findByRole('button', { name: '프레셔' });
   await userEvent.click(ability);
-  expect(ability.closest('details').open).toBe(true);
+  expect(ability.getAttribute('aria-expanded')).toBe('true');
   expect(screen.getByText('상대의 PP를 더 많이 줄인다.')).toBeTruthy();
   await userEvent.click(screen.getByRole('link', { name: '테오키스 · 디펜스폼' }));
   await screen.findByText('테오키스 · 디펜스폼', { selector: 'header p' });
@@ -103,31 +122,29 @@ test('searches unloaded forms by Korean or English name and supports national-nu
   fireEvent.change(search, { target: { value: 'deoxys-attack' } });
   await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' });
   fireEvent.change(search, { target: { value: '025' } });
-  await userEvent.selectOptions(screen.getByLabelText('타입'), 'electric');
-  await userEvent.selectOptions(screen.getByLabelText('세대'), '1');
-  await userEvent.selectOptions(screen.getByLabelText('약점'), 'ground');
+  await chooseOption('타입', '전기');
+  await chooseOption('세대', '1세대');
+  await chooseOption('약점', '땅');
   await userEvent.click(screen.getByRole('button', { name: '랜덤 카드 뽑기' }));
   expect(within(screen.getByRole('region', { name: '뽑은 카드' })).getByRole('link', { name: /피카츄/ })).toBeTruthy();
   await userEvent.click(screen.getByRole('button', { name: '표 보기' }));
   expect(within(screen.getByRole('table')).getByRole('link', { name: '피카츄' })).toBeTruthy();
   expect(new URLSearchParams(window.location.hash.split('?')[1]).get('type')).toBe('electric');
+  await chooseOption('타입', '전체');
+  expect(new URLSearchParams(window.location.hash.split('?')[1]).has('type')).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
 });
 
-test('reveals the whole card independently of detail navigation and preserves the search on return', async () => {
+test('opens the card without a separate flip button and preserves the search on return', async () => {
   start('#/', variantResponses);
   const list = screen.getByRole('list', { name: '포켓몬 목록' });
   expect(within(list).getAllByRole('listitem')).toHaveLength(20);
   await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
   expect(within(list).getAllByRole('listitem')).toHaveLength(40);
 
-  // Given a matching card, the flip button does not use the card link.
   fireEvent.change(screen.getByRole('searchbox', { name: '포켓몬 검색' }), { target: { value: 'deoxys-attack' } });
   const card = await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' });
-  const flip = screen.getByRole('button', { name: '테오키스 · 어택폼 카드 뒤집기' });
-  await userEvent.click(flip);
-  expect(flip.getAttribute('aria-pressed')).toBe('true');
-  expect(card.dataset.flipped).toBe('true');
+  expect(screen.queryByRole('button', { name: /카드 뒤집기/ })).toBeNull();
 
   card.focus();
   await userEvent.keyboard('{Enter}');
@@ -147,8 +164,8 @@ test('saves favorites by form and caught records by national species number', as
 
   expect(await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' })).toBeTruthy();
   await userEvent.click(screen.getByRole('link', { name: '도감 체크' }));
-  expect((await screen.findByRole('progressbar')).getAttribute('value')).toBe('1');
-  await userEvent.selectOptions(screen.getByLabelText('도감'), 'kanto');
+  expect((await screen.findByRole('progressbar')).getAttribute('aria-valuenow')).toBe('1');
+  await chooseOption('도감', '관동');
   expect(screen.getByText('0 / 151 등록 · 0%')).toBeTruthy();
   const state = JSON.parse(localStorage.getItem('poke-dict-collection'));
   expect(state.caught).toEqual(['386']);
@@ -190,6 +207,21 @@ test('shares catalogue results without including local collection filters or unr
   await userEvent.click(screen.getByRole('button', { name: '검색 조건 공유' }));
   const url = new URL((await screen.findByLabelText('공유 주소')).value);
   expect(Object.fromEntries(new URLSearchParams(url.hash.split('?')[1]))).toEqual({ q: 'pikachu', type: 'electric' });
+});
+
+test('shows a toast outside the search panel when the share link is copied', async () => {
+  start('#/?q=pikachu&type=electric');
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+
+  await userEvent.click(screen.getByRole('button', { name: '검색 조건 공유' }));
+
+  const notifications = screen.getByRole('region', { name: /알림/ });
+  expect(await within(notifications).findByText('링크를 복사했어요.')).toBeTruthy();
+  const searchPanel = screen.getByRole('region', { name: '도감 검색' });
+  expect(within(searchPanel).queryByText('링크를 복사했어요.')).toBeNull();
+  expect(screen.queryByLabelText('공유 주소')).toBeNull();
+  expect(new URL(writeText.mock.calls[0][0]).hash).toBe('#/?q=pikachu&type=electric');
 });
 
 test('loads a shared comparison and uses type combinations for team resistances', async () => {
@@ -245,14 +277,14 @@ test('filters learning and encounters by the selected game version and shows ver
   });
 
   await userEvent.click(await screen.findByText('게임별 기술과 출현 정보'));
-  await userEvent.selectOptions(await screen.findByLabelText('게임 버전'), 'red');
+  await chooseOption('게임 버전', '레드');
   expect(screen.getByRole('link', { name: '몸통박치기' }).getAttribute('href')).toBe('#/moves/33');
   await userEvent.click(screen.getByRole('button', { name: '출현·획득 방법' }));
   const map = await screen.findByRole('region', { name: '관동 출현 지도' });
   expect(within(map).getAllByRole('button')).toHaveLength(2);
   expect(within(map).getByRole('button', { name: 'kanto power plant' })).toBeTruthy();
   expect(screen.getByText('걷기 · Lv. 3–5 · 낮')).toBeTruthy();
-  await userEvent.selectOptions(screen.getByLabelText('게임 버전'), 'scarlet');
+  await chooseOption('게임 버전', '스칼렛');
   expect(screen.getByText('이 버전의 야생 출현 기록이 없어요.')).toBeTruthy();
   expect(screen.queryByRole('region', { name: '관동 출현 지도' })).toBeNull();
 });
@@ -322,10 +354,11 @@ test('merges a full backup without discarding local binders or filling team slot
   if (typeof file.text !== 'function') {
     Object.defineProperty(file, 'text', { value: async () => JSON.stringify(backup) });
   }
-  await userEvent.upload(screen.getByLabelText('백업 가져오기'), file);
+  await userEvent.upload(screen.getByLabelText('백업 파일'), file);
   await screen.findByText('백업을 현재 기록에 합쳤어요.');
   await userEvent.click(screen.getByRole('link', { name: '바인더', exact: true }));
-  expect(screen.getByRole('heading', { name: '먼저 만든 바인더' })).toBeTruthy();
+  const binder = screen.getByRole('region', { name: '먼저 만든 바인더' });
+  expect(within(binder).getByRole('textbox', { name: '바인더 이름' }).value).toBe('먼저 만든 바인더');
 
   await userEvent.click(screen.getByRole('link', { name: '내 팀' }));
   fireEvent.change(await screen.findByRole('searchbox', { name: '팀에 추가할 포켓몬' }), { target: { value: '025' } });
@@ -356,7 +389,7 @@ test('shows a regional evolution recipe only on the matching evolved form', asyn
 
   async function showSunLocations() {
     await userEvent.click(await screen.findByText('게임별 기술과 출현 정보'));
-    await userEvent.selectOptions(await screen.findByLabelText('게임 버전'), 'sun');
+    await chooseOption('게임 버전', '썬');
     await userEvent.click(screen.getByRole('button', { name: '출현·획득 방법' }));
     await screen.findByText('이 버전의 야생 출현 기록이 없어요.');
   }

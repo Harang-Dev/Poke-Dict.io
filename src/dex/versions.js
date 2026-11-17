@@ -4,5 +4,6 @@ export { versions };
 const names = new Map(versions.map(({ id, name }) => [id, name]));
 
 export function gameVersionName(id) {
-  return names.get(id) ?? id.replaceAll('-', ' ');
+  const name = names.get(id) ?? id.replaceAll('-', ' ');
+  return id.endsWith('-japan') ? `${name} (일본판)` : name;
 }

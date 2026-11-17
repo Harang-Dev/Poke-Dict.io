@@ -1,9 +1,12 @@
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { findPokemon, entryById, generations, statTotal, typeNames } from '../dex/catalogue';
 import { useCollection } from '../dex/collection';
 import PokeCard from '../components/PokeCard';
 import PokeCardList, { pageSize } from '../components/PokeCardList';
+import SelectField from '../components/SelectField';
 import ShareLink from '../components/ShareLink';
 import { formatPokemonNumber } from '../pokemonNumber';
 
@@ -51,46 +54,32 @@ export default function Home() {
     <main className="home">
       <header className="home-hero">
         <h1 className="home__title">POKE-DICT</h1>
-        <p>포켓몬을 찾고, 카드를 뒤집고, 나만의 도감을 모아보세요.</p>
       </header>
       <section className="panel dex-search" aria-label="도감 검색">
         <label className="dex-search__main">
           포켓몬 검색
-          <input type="search" placeholder="피카츄, pikachu, 025" value={query} maxLength={80}
+          <Input type="search" placeholder="피카츄, pikachu, 025" value={query} maxLength={80}
             onChange={(event) => setFilter('q', event.target.value)} />
         </label>
         <div className="filter-row">
           <TypeSelect label="타입" value={type} onChange={(value) => setFilter('type', value)} />
-          <label>세대
-            <select value={generation} onChange={(event) => setFilter('gen', event.target.value)}>
-              <option value="">모든 세대</option>
-              {generations.map((gen) => <option key={gen} value={gen}>{gen}세대</option>)}
-            </select>
-          </label>
+          <SelectField label="세대" value={generation} onChange={(value) => setFilter('gen', value)}
+            options={[['', '모든 세대'], ...generations.map((gen) => [String(gen), `${gen}세대`])]} />
           <TypeSelect label="약점" value={weakness} onChange={(value) => setFilter('weakness', value)} />
-          <label>정렬
-            <select value={sort} onChange={(event) => setFilter('sort', event.target.value)}>
-              <option value="">도감 번호순</option>
-              <option value="name">이름순</option>
-              <option value="height">키 큰 순</option>
-              <option value="weight">몸무게 무거운 순</option>
-              <option value="stats">기본 스탯 합계 높은 순</option>
-            </select>
-          </label>
-          <label>수집 상태
-            <select value={caught} onChange={(event) => setFilter('caught', event.target.value)}>
-              <option value="">전체</option>
-              <option value="caught">잡은 포켓몬</option>
-              <option value="missing">미등록</option>
-            </select>
-          </label>
+          <SelectField label="정렬" value={sort} onChange={(value) => setFilter('sort', value)}
+            options={[
+              ['', '도감 번호순'], ['name', '이름순'], ['height', '키 큰 순'], ['weight', '몸무게 무거운 순'],
+              ['stats', '기본 스탯 합계 높은 순'],
+            ]} />
+          <SelectField label="수집 상태" value={caught} onChange={(value) => setFilter('caught', value)}
+            options={[['', '전체'], ['caught', '잡은 포켓몬'], ['missing', '미등록']]} />
         </div>
         <div className="action-row">
-          <button type="button" aria-pressed={table} onClick={() => setFilter('view', table ? '' : 'table')}>
+          <Button type="button" aria-pressed={table} onClick={() => setFilter('view', table ? '' : 'table')}>
             {table ? '카드 보기' : '표 보기'}
-          </button>
-          <button type="button" disabled={!matches.length}
-            onClick={() => setDrawn(matches[Math.floor(Math.random() * matches.length)])}>랜덤 카드 뽑기</button>
+          </Button>
+          <Button type="button" disabled={!matches.length}
+            onClick={() => setDrawn(matches[Math.floor(Math.random() * matches.length)])}>랜덤 카드 뽑기</Button>
           <ShareLink to={{ pathname: '/', search: shared.toString() }}>검색 조건 공유</ShareLink>
         </div>
       </section>
@@ -102,11 +91,10 @@ export default function Home() {
       )}
       {drawn && (
         <section className="drawn-card" aria-label="뽑은 카드">
-          <h2>뽑은 카드</h2>
           <PokeCard key={drawn.id} entry={drawn} fromList />
         </section>
       )}
-      <p className="results-count" role="status">{matches.length.toLocaleString('ko-KR')}개 항목</p>
+      <div className="results-count"><span className="meta-badge" role="status">{matches.length.toLocaleString('ko-KR')}개 항목</span></div>
       {table ? (
         <PokemonTable matches={matches} count={page * pageSize} showMore={more} />
       ) : (
@@ -117,14 +105,8 @@ export default function Home() {
 }
 
 function TypeSelect({ label, value, onChange }) {
-  return (
-    <label>{label}
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">전체</option>
-        {Object.entries(typeNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-      </select>
-    </label>
-  );
+  return <SelectField label={label} value={value} onChange={onChange}
+    options={[['', '전체'], ...Object.entries(typeNames)]} />;
 }
 
 function PokemonTable({ matches, count, showMore }) {
@@ -143,7 +125,11 @@ function PokemonTable({ matches, count, showMore }) {
             <tr key={entry.id}>
               <td>{formatPokemonNumber(entry.number)}</td>
               <th scope="row"><Link to={`/pokemon/${entry.id}`} state={{ fromList: true }}>{entry.name}</Link></th>
-              <td>{entry.types.map((type) => typeNames[type] ?? type).join(' · ')}</td>
+              <td>
+                <div className="type-list">
+                  {entry.types.map((type) => <span key={type} className="type-badge" data-type={type}>{typeNames[type] ?? type}</span>)}
+                </div>
+              </td>
               <td>{entry.height == null ? '—' : `${entry.height / 10} m`}</td>
               <td>{entry.weight == null ? '—' : `${entry.weight / 10} kg`}</td>
               <td>{statTotal(entry) ?? '—'}</td>
@@ -151,7 +137,7 @@ function PokemonTable({ matches, count, showMore }) {
           ))}</tbody>
         </table>
       </div>
-      {count < matches.length && <div className="list-status"><button type="button" onClick={showMore}>더 보기</button></div>}
+      {count < matches.length && <div className="list-status"><Button type="button" onClick={showMore}>더 보기</Button></div>}
     </>
   );
 }
