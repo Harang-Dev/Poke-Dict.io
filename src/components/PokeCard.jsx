@@ -1,50 +1,46 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { koreanName, pokemonOptions, speciesOptions } from '../api/pokeApi';
 import { formatPokemonNumber } from '../pokemonNumber';
-import RequestError from './RequestError';
+import PokemonSprite from './PokemonSprite';
 
-export default function PokeCard({ entry }) {
-  const pokemon = useQuery(pokemonOptions(entry.id));
-  const species = useQuery(speciesOptions(pokemon.data));
-  const error = [pokemon, species].find((query) => query.isError);
-  const name = koreanName(species.data) ?? entry.name;
-  const number = formatPokemonNumber(entry.id);
-
-  if (error) {
-    return (
-      <div className="pokemon-card pokemon-card--error">
-        <span>{number} {name}</span>
-        <RequestError
-          message="카드 정보를 불러오지 못했어요."
-          retry={() => error.refetch()}
-          retrying={error.isFetching}
-        />
-      </div>
-    );
-  }
+export default function PokeCard({ entry, fromList = false }) {
+  const [flipped, setFlipped] = useState(false);
+  const number = formatPokemonNumber(entry.number);
 
   return (
-    <Link
-      className="pokemon-card"
-      to={`/pokemon/${entry.id}`}
-      state={{ fromList: true }}
-      aria-label={`${number} ${name}`}
-    >
-      <span className="pokemon-card__media">
-        <span className="pokemon-card__faces">
-          <span className="pokemon-card__front">
-            {pokemon.data?.sprites.front_default && (
-              <img src={pokemon.data.sprites.front_default} alt="" loading="lazy" />
-            )}
-          </span>
-          <span className="pokemon-card__back" aria-hidden="true" />
-        </span>
+    <div className="card-tile">
+      <Link
+        className="pokemon-card"
+        data-flipped={flipped}
+        to={`/pokemon/${entry.id}`}
+        state={fromList ? { fromList: true } : undefined}
+        aria-label={`${number} ${entry.name}`}
+      >
+        <CardFaces front={(
+          <>
+            <span className="pokemon-card__media"><PokemonSprite key={entry.id} entry={entry} /></span>
+            <span className="pokemon-card__label">
+              <span className="pokemon-card__number">{number}</span>
+              <strong>{entry.name}</strong>
+            </span>
+          </>
+        )} />
+      </Link>
+      <button type="button" className="card-toggle" onClick={() => setFlipped(!flipped)}
+        aria-label={`${entry.name} 카드 뒤집기`} aria-pressed={flipped}>
+        {flipped ? '앞면 보기' : '카드 뒤집기'}
+      </button>
+    </div>
+  );
+}
+
+export function CardFaces({ front, back }) {
+  return (
+    <span className="pokemon-card__faces">
+      <span className="pokemon-card__front">{front}</span>
+      <span className={back ? 'pokemon-card__back pokemon-card__back--content' : 'pokemon-card__back'} aria-hidden="true">
+        {back}
       </span>
-      <span className="pokemon-card__label">
-        <span className="pokemon-card__number">{number}</span>
-        <strong>{name}</strong>
-      </span>
-    </Link>
+    </span>
   );
 }

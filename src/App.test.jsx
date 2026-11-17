@@ -1,20 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
 
 const api = 'https://pokeapi.co/api/v2';
-const firstPage = '/pokemon/?limit=20&offset=0';
-const nextPage = '/pokemon/?offset=35&limit=20';
 const image = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/10001.png';
-const result = (id, name) => ({ name, url: `${api}/pokemon/${id}/` });
 const resource = (kind, id, name) => ({ name, url: `${api}/${kind}/${id}/` });
 const korean = (name) => ({ language: { name: 'ko' }, name });
 const variant = {
   name: 'deoxys-attack',
   species: resource('pokemon-species', 386, 'deoxys'),
-  sprites: { front_default: image, back_default: null },
+  sprites: { front_default: image, back_default: null, front_shiny: 'https://example.test/shiny.png' },
+  cries: { latest: 'https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/10001.ogg' },
   height: 17,
   weight: 608,
   types: [{ type: resource('type', 14, 'psychic') }],
@@ -22,9 +20,24 @@ const variant = {
   stats: [{ stat: { name: 'attack' }, base_stat: 180 }],
 };
 
+const variantResponses = {
+  '/pokemon/10001/': variant,
+  '/pokemon-species/386/': {
+    id: 386,
+    name: 'deoxys',
+    names: [korean('테오키스')],
+    flavor_text_entries: [{ language: { name: 'ko' }, version: { name: 'emerald' }, flavor_text: '우주에서\n온 포켓몬.' }],
+  },
+  '/type/14/': { names: [korean('에스퍼')] },
+  '/ability/46/': {
+    names: [korean('프레셔')],
+    flavor_text_entries: [{ language: { name: 'ko' }, flavor_text: '상대의 PP를\n더 많이 줄인다.' }],
+  },
+};
+
 let queryClient;
 
-function start(hash, responses) {
+function start(hash, responses = {}) {
   window.history.replaceState(null, '', `/${hash}`);
   const fetch = vi.fn(async (input) => {
     const url = String(input);
@@ -33,9 +46,7 @@ function start(hash, responses) {
       throw new Error(`Unexpected request: ${url}`);
     }
     const value = typeof response === 'function' ? await response() : response;
-    return typeof value === 'number'
-      ? new Response(null, { status: value })
-      : Response.json(value);
+    return typeof value === 'number' ? new Response(null, { status: value }) : Response.json(value);
   });
 
   vi.stubGlobal('fetch', fetch);
@@ -44,147 +55,328 @@ function start(hash, responses) {
   return fetch;
 }
 
+beforeEach(() => localStorage.clear());
 afterEach(() => {
   cleanup();
   queryClient?.clear();
   vi.unstubAllGlobals();
 });
 
-test('opens a form directly using its species URL and shows measurements without a back sprite', async () => {
+test('opens a form directly, shows the national number and keeps measurements without a back sprite', async () => {
   const fetch = start('#/pokemon/10001', {
-    '/pokemon/10001/': variant,
-    '/pokemon-species/386/': { names: [korean('테오키스')] },
-    '/type/14/': { names: [korean('에스퍼')] },
-    '/ability/46/': {
-      names: [korean('프레셔')],
-      flavor_text_entries: [{ language: { name: 'ko' }, flavor_text: '상대의 PP를\n더 많이 줄인다.' }],
-    },
+    ...variantResponses,
+    '/pokemon/10002/': { ...variant, name: 'deoxys-defense' },
   });
 
-  expect(await screen.findByRole('heading', { name: '테오키스' })).toBeTruthy();
-  expect(screen.getByText('No. 10001')).toBeTruthy();
+  await screen.findByRole('heading', { name: '테오키스' });
+  expect(screen.getByText('No. 386')).toBeTruthy();
+  expect(screen.getByText('테오키스 · 어택폼', { selector: 'header p' })).toBeTruthy();
+  expect(await screen.findByRole('link', { name: '테오키스 · 디펜스폼' })).toBeTruthy();
   expect(screen.getByRole('img', { name: '테오키스 앞모습' })).toBeTruthy();
   expect(screen.queryByRole('img', { name: /뒷모습/ })).toBeNull();
-  expect(screen.getByText('1.7 m')).toBeTruthy();
   expect(screen.getByText('60.8 kg')).toBeTruthy();
-  expect(await screen.findByText('에스퍼')).toBeTruthy();
+  expect(screen.getByText('우주에서 온 포켓몬.')).toBeTruthy();
+  expect(screen.getByLabelText('테오키스 울음소리').getAttribute('preload')).toBe('none');
+  await userEvent.click(screen.getByRole('button', { name: '색이 다른 모습 보기' }));
+  expect(screen.getByRole('img', { name: '테오키스 색이 다른 앞모습' })).toBeTruthy();
+
   const ability = await screen.findByText('프레셔');
-  expect(ability.closest('details').open).toBe(false);
   await userEvent.click(ability);
   expect(ability.closest('details').open).toBe(true);
   expect(screen.getByText('상대의 PP를 더 많이 줄인다.')).toBeTruthy();
-  expect(fetch.mock.calls.map(([url]) => String(url))).not.toContain(`${api}/pokemon-species/10001/`);
-});
-
-test('loads only card data on the list and shares type and ability results between details', async () => {
-  const fetch = start('#/', {
-    [firstPage]: { results: [result(10001, 'deoxys-attack'), result(10002, 'deoxys-defense')], next: null },
-    '/pokemon/10001/': variant,
-    '/pokemon/10002/': { ...variant, name: 'deoxys-defense' },
-    '/pokemon-species/386/': { names: [korean('테오키스')] },
-    '/type/14/': { names: [korean('에스퍼')] },
-    '/ability/46/': { names: [korean('프레셔')], flavor_text_entries: [] },
-  });
-
-  const firstCard = await screen.findByRole('link', { name: 'No. 10001 테오키스' });
-  await screen.findByRole('link', { name: 'No. 10002 테오키스' });
-  expect(fetch.mock.calls.map(([url]) => String(url)).sort()).toEqual([
-    `${api}${firstPage}`,
-    `${api}/pokemon/10001/`,
-    `${api}/pokemon/10002/`,
-    `${api}/pokemon-species/386/`,
-  ].sort());
-
-  await userEvent.tab();
-  expect(document.activeElement).toBe(firstCard);
-  await userEvent.keyboard('{Enter}');
-  expect(await screen.findByText('에스퍼')).toBeTruthy();
+  await userEvent.click(screen.getByRole('link', { name: '테오키스 · 디펜스폼' }));
+  await screen.findByText('테오키스 · 디펜스폼', { selector: 'header p' });
   await screen.findByText('프레셔');
-
-  await userEvent.click(screen.getByRole('button', { name: /도감 목록으로/ }));
-  await userEvent.click(await screen.findByRole('link', { name: 'No. 10002 테오키스' }));
-  await screen.findByRole('heading', { name: '테오키스' });
-  expect(screen.getByText('에스퍼')).toBeTruthy();
-  expect(screen.getByText('프레셔')).toBeTruthy();
-
+  const requests = fetch.mock.calls.map(([url]) => String(url));
+  expect(requests).not.toContain(`${api}/pokemon-species/10001/`);
   for (const path of ['/pokemon-species/386/', '/type/14/', '/ability/46/']) {
-    expect(fetch.mock.calls.filter(([url]) => String(url) === api + path)).toHaveLength(1);
+    expect(requests.filter((url) => url === api + path)).toHaveLength(1);
   }
 });
 
-test('keeps loaded cards when the next page fails and retries the API-provided next URL', async () => {
-  let breakNext = true;
-  start('#/', {
-    [firstPage]: { results: [result(10001, 'deoxys-attack')], next: api + nextPage },
-    [nextPage]: () => breakNext
-      ? 503
-      : { results: [result(10002, 'deoxys-defense')], next: null },
-    '/pokemon/10001/': variant,
-    '/pokemon/10002/': { ...variant, name: 'deoxys-defense' },
-    '/pokemon-species/386/': { names: [korean('테오키스')] },
-  });
+test('searches unloaded forms by Korean or English name and supports national-number filters, table view and random draw', async () => {
+  const fetch = start('#/');
+  const search = screen.getByRole('searchbox', { name: '포켓몬 검색' });
 
-  await userEvent.click(await screen.findByRole('button', { name: '더 보기' }));
-  expect((await screen.findByRole('alert')).textContent).toBe('포켓몬 목록을 더 불러오지 못했어요.');
-  expect(screen.getByRole('link', { name: /No\. 10001/ })).toBeTruthy();
-
-  breakNext = false;
-  await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-  expect(await screen.findByRole('link', { name: 'No. 10002 테오키스' })).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toBe('모든 포켓몬을 불러왔어요.');
-  expect(screen.queryByRole('button', { name: '더 보기' })).toBeNull();
+  fireEvent.change(search, { target: { value: '테오키스 어택폼' } });
+  expect(await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' })).toBeTruthy();
+  fireEvent.change(search, { target: { value: 'deoxys-attack' } });
+  await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' });
+  fireEvent.change(search, { target: { value: '025' } });
+  await userEvent.selectOptions(screen.getByLabelText('타입'), 'electric');
+  await userEvent.selectOptions(screen.getByLabelText('세대'), '1');
+  await userEvent.selectOptions(screen.getByLabelText('약점'), 'ground');
+  await userEvent.click(screen.getByRole('button', { name: '랜덤 카드 뽑기' }));
+  expect(within(screen.getByRole('region', { name: '뽑은 카드' })).getByRole('link', { name: /피카츄/ })).toBeTruthy();
+  await userEvent.click(screen.getByRole('button', { name: '표 보기' }));
+  expect(within(screen.getByRole('table')).getByRole('link', { name: '피카츄' })).toBeTruthy();
+  expect(new URLSearchParams(window.location.hash.split('?')[1]).get('type')).toBe('electric');
+  expect(fetch).not.toHaveBeenCalled();
 });
 
-test('distinguishes an initial list failure from successful empty results', async () => {
-  let fail = true;
-  start('#/', {
-    [firstPage]: () => fail ? 503 : { results: [], next: null },
-  });
+test('reveals the whole card independently of detail navigation and preserves the search on return', async () => {
+  start('#/', variantResponses);
+  const list = screen.getByRole('list', { name: '포켓몬 목록' });
+  expect(within(list).getAllByRole('listitem')).toHaveLength(20);
+  await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
+  expect(within(list).getAllByRole('listitem')).toHaveLength(40);
 
-  expect((await screen.findByRole('alert')).textContent).toBe('포켓몬 목록을 불러오지 못했어요.');
-  fail = false;
-  await userEvent.click(screen.getByRole('button', { name: '다시 시도' }));
-  await screen.findByText('표시할 포켓몬이 없어요.');
-  expect(screen.queryByRole('alert')).toBeNull();
+  // Given a matching card, the flip button does not use the card link.
+  fireEvent.change(screen.getByRole('searchbox', { name: '포켓몬 검색' }), { target: { value: 'deoxys-attack' } });
+  const card = await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' });
+  const flip = screen.getByRole('button', { name: '테오키스 · 어택폼 카드 뒤집기' });
+  await userEvent.click(flip);
+  expect(flip.getAttribute('aria-pressed')).toBe('true');
+  expect(card.dataset.flipped).toBe('true');
+
+  card.focus();
+  await userEvent.keyboard('{Enter}');
+  await screen.findByRole('heading', { name: '테오키스' });
+  expect(window.location.hash).toBe('#/pokemon/10001');
+  await userEvent.click(screen.getByRole('button', { name: /도감 목록으로/ }));
+  await screen.findByRole('searchbox', { name: '포켓몬 검색' });
+  expect(new URLSearchParams(window.location.hash.split('?')[1]).get('q')).toBe('deoxys-attack');
 });
 
-test('lets an individual failed card retry without removing the rest of the list', async () => {
-  let fail = true;
-  start('#/', {
-    [firstPage]: { results: [result(10001, 'deoxys-attack'), result(10002, 'deoxys-defense')], next: null },
-    '/pokemon/10001/': () => fail ? 503 : variant,
-    '/pokemon/10002/': { ...variant, name: 'deoxys-defense' },
-    '/pokemon-species/386/': { names: [korean('테오키스')] },
-  });
+test('saves favorites by form and caught records by national species number', async () => {
+  start('#/pokemon/10001', variantResponses);
+  await userEvent.click(await screen.findByRole('button', { name: '즐겨찾기 추가' }));
+  await userEvent.click(screen.getByRole('button', { name: '잡은 포켓몬으로 등록' }));
+  await userEvent.click(screen.getByRole('button', { name: '색이 다른 모습 등록' }));
+  await userEvent.click(screen.getByRole('link', { name: '내 컬렉션' }));
 
-  const cards = await screen.findAllByRole('listitem');
-  expect(await within(cards[0]).findByRole('alert')).toBeTruthy();
-  expect(await within(cards[1]).findByRole('link', { name: 'No. 10002 테오키스' })).toBeTruthy();
-  fail = false;
-  await userEvent.click(within(cards[0]).getByRole('button', { name: '다시 시도' }));
-  expect(await within(cards[0]).findByRole('link', { name: 'No. 10001 테오키스' })).toBeTruthy();
+  expect(await screen.findByRole('link', { name: 'No. 386 테오키스 · 어택폼' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('link', { name: '도감 체크' }));
+  expect((await screen.findByRole('progressbar')).getAttribute('value')).toBe('1');
+  await userEvent.selectOptions(screen.getByLabelText('도감'), 'kanto');
+  expect(screen.getByText('0 / 151 등록 · 0%')).toBeTruthy();
+  const state = JSON.parse(localStorage.getItem('poke-dict-collection'));
+  expect(state.caught).toEqual(['386']);
+  expect(state.shiny).toEqual(['10001']);
+  expect(state.recent).toEqual(['10001']);
 });
 
-test('shows a missing Pokémon state for an unknown detail ID', async () => {
+test('creates a binder, adds cards, reorders them and shares the display order', async () => {
+  start('#/collection?tab=binders');
+  await userEvent.type(await screen.findByLabelText('새 바인더 이름'), '내 카드');
+  await userEvent.click(screen.getByRole('button', { name: '바인더 만들기' }));
+
+  const search = await screen.findByRole('searchbox', { name: '도감에서 카드 추가' });
+  fireEvent.change(search, { target: { value: '025' } });
+  await userEvent.click(screen.getByRole('button', { name: 'No. 025 피카츄' }));
+  fireEvent.change(search, { target: { value: '001' } });
+  await userEvent.click(screen.getByRole('button', { name: 'No. 001 이상해씨' }));
+  await userEvent.click(screen.getByRole('button', { name: '이상해씨 앞으로 이동' }));
+  const list = screen.getByRole('list', { name: '포켓몬 목록' });
+  expect(within(list).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['#/pokemon/1', '#/pokemon/25']);
+
+  vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+  await userEvent.click(screen.getByRole('button', { name: '바인더 공유' }));
+  const href = (await screen.findByLabelText('공유 주소')).value;
+  expect(href).toContain('#/binder?');
+  expect(new URLSearchParams(new URL(href).hash.split('?')[1]).get('cards')).toBe('1,25');
+});
+
+test('opens a shared binder independently of the collection', async () => {
+  start('#/binder?title=Starter&cards=4,1,999999,4');
+  await screen.findByRole('heading', { name: 'Starter' });
+  const list = screen.getByRole('list', { name: '포켓몬 목록' });
+  expect(within(list).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual(['#/pokemon/4', '#/pokemon/1']);
+});
+
+test('shares catalogue results without including local collection filters or unrelated query parameters', async () => {
+  start('#/?q=pikachu&type=electric&caught=missing&page=2&other=private');
+  vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+  await userEvent.click(screen.getByRole('button', { name: '검색 조건 공유' }));
+  const url = new URL((await screen.findByLabelText('공유 주소')).value);
+  expect(Object.fromEntries(new URLSearchParams(url.hash.split('?')[1]))).toEqual({ q: 'pikachu', type: 'electric' });
+});
+
+test('loads a shared comparison and uses type combinations for team resistances', async () => {
+  start('#/compare?pokemon=6,10001');
+  const table = await screen.findByRole('table');
+  expect(within(table).getByRole('link', { name: /테오키스/ })).toBeTruthy();
+  expect(within(within(table).getByRole('row', { name: /^공격/ })).getByText('180')).toBeTruthy();
+
+  await userEvent.click(screen.getByRole('link', { name: '내 팀' }));
+  const picker = await screen.findByRole('searchbox', { name: '팀에 추가할 포켓몬' });
+  fireEvent.change(picker, { target: { value: '006' } });
+  await userEvent.click(screen.getByRole('button', { name: 'No. 006 리자몽' }));
+  const teamTable = screen.getByRole('region', { name: '팀 방어 상성표' });
+  const ground = within(teamTable).getByRole('row', { name: /땅/ });
+  expect(within(ground).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['0마리', '0마리', '1마리']);
+});
+
+test('filters learning and encounters by the selected game version and shows verified Kanto map markers', async () => {
+  const pikachu = {
+    ...variant,
+    name: 'pikachu',
+    species: resource('pokemon-species', 25, 'pikachu'),
+    types: [{ type: resource('type', 13, 'electric') }],
+    abilities: [],
+    moves: [{
+      move: resource('move', 33, 'tackle'),
+      version_group_details: [{
+        version_group: { name: 'red-blue' }, move_learn_method: { name: 'level-up' }, level_learned_at: 5,
+      }],
+    }],
+  };
+
+  start('#/pokemon/25', {
+    '/pokemon/25/': pikachu,
+    '/pokemon-species/25/': { id: 25, names: [korean('피카츄')] },
+    '/type/13/': { names: [korean('전기')] },
+    '/pokemon/25/encounters': [{
+      location_area: resource('location-area', 0, 'silph-co'),
+      version_details: [
+        { version: { name: 'red' }, encounter_details: [{ method: { name: 'walk' }, min_level: 3, max_level: 5 }] },
+      ],
+    }, {
+      location_area: resource('location-area', 321, 'viridian-forest-area'),
+      version_details: [
+        { version: { name: 'red' }, encounter_details: [{ method: { name: 'walk' }, min_level: 3, max_level: 5, condition_values: [{ name: 'time-day' }] }] },
+      ],
+    }, {
+      location_area: resource('location-area', 330, 'kanto-power-plant-area'),
+      version_details: [
+        { version: { name: 'red' }, encounter_details: [{ method: { name: 'walk' }, min_level: 20, max_level: 24 }] },
+      ],
+    }],
+  });
+
+  await userEvent.click(await screen.findByText('게임별 기술과 출현 정보'));
+  await userEvent.selectOptions(await screen.findByLabelText('게임 버전'), 'red');
+  expect(screen.getByRole('link', { name: '몸통박치기' }).getAttribute('href')).toBe('#/moves/33');
+  await userEvent.click(screen.getByRole('button', { name: '출현·획득 방법' }));
+  const map = await screen.findByRole('region', { name: '관동 출현 지도' });
+  expect(within(map).getAllByRole('button')).toHaveLength(2);
+  expect(within(map).getByRole('button', { name: 'kanto power plant' })).toBeTruthy();
+  expect(screen.getByText('걷기 · Lv. 3–5 · 낮')).toBeTruthy();
+  await userEvent.selectOptions(screen.getByLabelText('게임 버전'), 'scarlet');
+  expect(screen.getByText('이 버전의 야생 출현 기록이 없어요.')).toBeTruthy();
+  expect(screen.queryByRole('region', { name: '관동 출현 지도' })).toBeNull();
+});
+
+test('uses the quiz card to reveal the daily answer and remembers the reveal', async () => {
+  start('#/quiz');
+  await screen.findByRole('heading', { name: '오늘의 실루엣' });
+  await userEvent.click(screen.getByRole('button', { name: '정답 공개' }));
+  expect(screen.getByRole('link', { name: '포켓몬 상세 보기' })).toBeTruthy();
+  expect(document.querySelector('.pokemon-card--quiz').dataset.flipped).toBe('true');
+  await userEvent.click(screen.getByRole('link', { name: '도감' }));
+  await userEvent.click(screen.getByRole('link', { name: '퀴즈' }));
+  expect(await screen.findByRole('link', { name: '포켓몬 상세 보기' })).toBeTruthy();
+});
+
+test('shows a missing Pokémon state and redirects the previous detail address', async () => {
   start('#/pokemon/99999999', { '/pokemon/99999999/': 404 });
   await screen.findByText('포켓몬을 찾을 수 없어요.');
   expect(screen.getByRole('link', { name: /도감 목록으로/ }).getAttribute('href')).toBe('#/');
-});
-
-test('recovers the old detail address by replacing it with the list', async () => {
-  start('#/detail', { [firstPage]: { results: [], next: null } });
-  await screen.findByText('표시할 포켓몬이 없어요.');
+  window.location.hash = '#/detail';
+  await screen.findByRole('searchbox', { name: '포켓몬 검색' });
   expect(window.location.hash).toBe('#/');
 });
 
-test('keeps the detail visible when the species URL points outside PokéAPI', async () => {
+test('keeps detail visible when its species resource points outside PokéAPI', async () => {
   const fetch = start('#/pokemon/10001', {
+    ...variantResponses,
     '/pokemon/10001/': { ...variant, species: { url: 'https://other.example/pokemon-species/386/' } },
-    '/type/14/': { names: [korean('에스퍼')] },
-    '/ability/46/': { names: [korean('프레셔')], flavor_text_entries: [] },
   });
 
-  expect((await screen.findByRole('alert')).textContent).toBe('한국어 이름을 불러오지 못했어요.');
-  expect(screen.getByRole('heading', { name: 'deoxys-attack' })).toBeTruthy();
+  expect((await screen.findByRole('alert')).textContent).toBe('한국어 도감 정보를 불러오지 못했어요.');
+  expect(screen.getByRole('heading', { name: '테오키스' })).toBeTruthy();
   expect(fetch.mock.calls.every(([url]) => String(url).startsWith(`${api}/`))).toBe(true);
+});
+
+test('retains the loaded page when returning from the list to the same results', async () => {
+  const pokemon = { ...variant, species: resource('pokemon-species', 25, 'pikachu'), abilities: [], types: [] };
+  start('#/?page=2', {
+    '/pokemon/25/': pokemon,
+    '/pokemon-species/25/': { id: 25, names: [korean('피카츄')] },
+  });
+
+  await userEvent.click(screen.getByRole('link', { name: 'No. 025 피카츄' }));
+  await screen.findByRole('button', { name: /도감 목록으로/ });
+  await userEvent.click(screen.getByRole('button', { name: /도감 목록으로/ }));
+  const list = await screen.findByRole('list', { name: '포켓몬 목록' });
+  expect(within(list).getAllByRole('listitem')).toHaveLength(40);
+});
+
+test('merges a full backup without discarding local binders or filling team slots with unknown IDs', async () => {
+  start('#/collection?tab=binders');
+  await userEvent.type(await screen.findByLabelText('새 바인더 이름'), '먼저 만든 바인더');
+  await userEvent.click(screen.getByRole('button', { name: '바인더 만들기' }));
+  await userEvent.click(screen.getByRole('link', { name: '백업' }));
+  const backup = {
+    version: 1,
+    favorites: ['25'],
+    caught: ['25'],
+    shiny: [],
+    recent: [],
+    team: Array.from({ length: 6 }, (_, index) => String(600000 + index)),
+    binders: Array.from({ length: 100 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`, name: `백업 ${index}`, cards: ['25'],
+    })),
+  };
+  const file = new File([JSON.stringify(backup)], 'poke-dict-backup.json', { type: 'application/json' });
+  if (typeof file.text !== 'function') {
+    Object.defineProperty(file, 'text', { value: async () => JSON.stringify(backup) });
+  }
+  await userEvent.upload(screen.getByLabelText('백업 가져오기'), file);
+  await screen.findByText('백업을 현재 기록에 합쳤어요.');
+  await userEvent.click(screen.getByRole('link', { name: '바인더', exact: true }));
+  expect(screen.getByRole('heading', { name: '먼저 만든 바인더' })).toBeTruthy();
+
+  await userEvent.click(screen.getByRole('link', { name: '내 팀' }));
+  fireEvent.change(await screen.findByRole('searchbox', { name: '팀에 추가할 포켓몬' }), { target: { value: '025' } });
+  await userEvent.click(screen.getByRole('button', { name: 'No. 025 피카츄' }));
+  expect(screen.getByRole('link', { name: 'No. 025 피카츄' })).toBeTruthy();
+});
+
+test('shows a regional evolution recipe only on the matching evolved form', async () => {
+  const raichu = { ...variant, name: 'raichu', is_default: true, types: [], abilities: [],
+    forms: [{ name: 'raichu' }], species: resource('pokemon-species', 26, 'raichu') };
+  const pikachu = resource('pokemon-species', 25, 'pikachu');
+  start('#/pokemon/26', {
+    '/pokemon/26/': raichu,
+    '/pokemon/10100/': { ...raichu, name: 'raichu-alola', is_default: false, forms: [{ name: 'raichu-alola' }] },
+    '/pokemon-species/26/': {
+      id: 26, name: 'raichu', names: [korean('라이츄')], evolves_from_species: pikachu,
+      evolution_chain: resource('evolution-chain', 10, 'raichu-chain'),
+    },
+    '/evolution-chain/10/': {
+      chain: { species: pikachu, evolves_to: [{ species: raichu.species, evolves_to: [], evolution_details: [{
+        version_group: { name: 'sun-moon' }, evolved_pokemon_form: { name: 'raichu-alola' }, trigger: { name: 'use-item' },
+        item: { name: 'thunder-stone' }, region: { name: 'alola' },
+      }] }] },
+    },
+    '/pokemon/26/encounters': [],
+    '/pokemon/10100/encounters': [],
+  });
+
+  async function showSunLocations() {
+    await userEvent.click(await screen.findByText('게임별 기술과 출현 정보'));
+    await userEvent.selectOptions(await screen.findByLabelText('게임 버전'), 'sun');
+    await userEvent.click(screen.getByRole('button', { name: '출현·획득 방법' }));
+    await screen.findByText('이 버전의 야생 출현 기록이 없어요.');
+  }
+
+  await showSunLocations();
+  expect(screen.queryByRole('heading', { name: '진화로 획득' })).toBeNull();
+  await userEvent.click(screen.getByRole('link', { name: '라이츄 · 알로라의 모습' }));
+  await showSunLocations();
+  expect(await screen.findByText('도구 사용 · 사용 도구 thunder stone · 지방 alola')).toBeTruthy();
+});
+
+test('opens a technique from the move dex and links the Pokémon that can learn it', async () => {
+  start('#/moves?q=몸통박치기', {
+    '/move/33/': {
+      flavor_text_entries: [{ language: { name: 'ko' }, flavor_text: '몸 전체를 부딪쳐 공격한다.' }],
+      damage_class: { name: 'physical' },
+      learned_by_pokemon: [resource('pokemon', 1, 'bulbasaur')],
+    },
+  });
+  await userEvent.click(await screen.findByRole('link', { name: '몸통박치기' }));
+  expect(await screen.findByText('몸 전체를 부딪쳐 공격한다.')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'No. 001 이상해씨' }).getAttribute('href')).toBe('#/pokemon/1');
 });
