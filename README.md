@@ -94,11 +94,19 @@ npm audit
 ```
 
 개발과 미리보기는 서버가 안내하는 `/Poke-Dict.io/` 경로에서 열 수 있습니다.
-포켓몬 상세 주소는 `/Poke-Dict.io/#/pokemon/1` 형식입니다.
+포켓몬과 기술 상세 주소는 각각 `/Poke-Dict.io/pokemon/1/`, `/Poke-Dict.io/moves/33/` 형식입니다.
+기존 `#/pokemon/1` 형태의 링크도 열면 새 경로로 이동합니다.
 
 GitHub 저장소의 **Settings → Pages → Source**를 **GitHub Actions**로 설정하면
 `main`에 반영된 커밋을 테스트하고, 빌드에 성공한 `dist/`를 Pages에 배포합니다.
 `main`을 대상으로 하는 PR에서는 테스트와 빌드를 실행합니다.
+
+`npm run build`는 공개 도감·기술 페이지의 HTML과 `dist/sitemap.xml`을 생성합니다.
+수집·비교·퀴즈·팀·공유 바인더의 직접 접속용 HTML에는 `noindex`를 적용합니다.
+Pages 프로젝트 주소에서는 `/Poke-Dict.io/sitemap.xml`을 검색 도구에 직접 제출합니다.
+크롤러 설정에 쓰이는 `robots.txt`는 호스트의 루트에서 제공해야 합니다.
+도메인을 연결한 뒤 GitHub Actions 저장소 변수 `POKEDICT_SITE_URL`에 최종 HTTPS 사이트 주소를 설정하면
+빌드 경로·대표 URL·사이트맵에 같이 적용됩니다. 사이트를 도메인 루트에 배포하면 사이트맵을 선언하는 `/robots.txt`도 생성합니다.
 
 ## 6. 도감 기능과 데이터 범위
 

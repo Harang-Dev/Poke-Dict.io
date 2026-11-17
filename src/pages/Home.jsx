@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useCallback, useMemo, useState } from 'react';
@@ -86,7 +87,7 @@ export default function Home() {
       {recent.length > 0 && (
         <section className="recent-cards" aria-labelledby="recent-heading">
           <h2 id="recent-heading">최근 본 카드</h2>
-          <ul>{recent.map((item) => <li key={item.id}><Link to={`/pokemon/${item.id}`}>{item.name}</Link></li>)}</ul>
+          <ul>{recent.map((item) => <li key={item.id}><Link to={pokemonPath(item.id)}>{item.name}</Link></li>)}</ul>
         </section>
       )}
       {drawn && (
@@ -124,7 +125,7 @@ function PokemonTable({ matches, count, showMore }) {
           <tbody>{matches.slice(0, count).map((entry) => (
             <tr key={entry.id}>
               <td>{formatPokemonNumber(entry.number)}</td>
-              <th scope="row"><Link to={`/pokemon/${entry.id}`} state={{ fromList: true }}>{entry.name}</Link></th>
+              <th scope="row"><Link to={pokemonPath(entry.id)} state={{ fromList: true }}>{entry.name}</Link></th>
               <td>
                 <div className="type-list">
                   {entry.types.map((type) => <span key={type} className="type-badge" data-type={type}>{typeNames[type] ?? type}</span>)}

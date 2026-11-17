@@ -1,3 +1,4 @@
+import { movePath } from '../paths';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useState } from 'react';
@@ -43,7 +44,7 @@ export function MoveList() {
             <thead><tr><th scope="col">이름</th><th scope="col">타입</th><th scope="col">위력</th><th scope="col">명중률</th><th scope="col">PP</th></tr></thead>
             <tbody>{found.slice(0, count).map((move) => (
               <tr key={move.id}>
-                <th scope="row"><Link to={`/moves/${move.id}`}>{move.name}</Link></th>
+                <th scope="row"><Link to={movePath(move.id)}>{move.name}</Link></th>
                 <td><span className="type-badge" data-type={move.type}>{typeNames[move.type] ?? move.type}</span></td>
                 <td>{move.power ?? '—'}</td>
                 <td>{move.accuracy == null ? '—' : `${move.accuracy}%`}</td>
@@ -71,7 +72,7 @@ export function MoveDetail() {
 
   return (
     <main className="workspace section-stack">
-      <Link className="detail__back" to="/moves">← 기술 도감으로</Link>
+      <Link className="detail__back" to="/moves/">← 기술 도감으로</Link>
       <header className="section-heading">
         <h1>{summary?.name ?? '기술을 찾을 수 없어요.'}</h1>
         {summary && <span className="type-badge" data-type={summary.type}>{typeNames[summary.type] ?? summary.type}</span>}

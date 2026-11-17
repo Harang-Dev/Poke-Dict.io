@@ -365,6 +365,16 @@ body {
   background: var(--surface);
 }
 
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  width: min(100%, 60rem);
+  margin-inline: auto;
+  padding: 1rem clamp(1rem, 4vw, 2rem) 1.5rem;
+  font-size: 0.875rem;
+}
+
 .site-header > div {
   display: flex;
   width: min(100%, 72rem);

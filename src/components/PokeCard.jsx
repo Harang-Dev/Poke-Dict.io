@@ -1,3 +1,4 @@
+import { pokemonPath } from '../paths';
 import { Link } from 'react-router-dom';
 import { formatPokemonNumber } from '../pokemonNumber';
 import PokemonSprite from './PokemonSprite';
@@ -8,7 +9,7 @@ export default function PokeCard({ entry, fromList = false }) {
   return (
     <Link
       className="pokemon-card"
-      to={`/pokemon/${entry.id}`}
+      to={pokemonPath(entry.id)}
       state={fromList ? { fromList: true } : undefined}
       aria-label={`${number} ${entry.name}`}
     >

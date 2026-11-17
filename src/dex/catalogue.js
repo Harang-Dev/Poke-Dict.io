@@ -1,4 +1,4 @@
-import catalogue from '../data/catalogue.json';
+import catalogue from '../data/catalogue.json' with { type: 'json' };
 
 export const { pokemon: entries, types: typeNames } = catalogue;
 export const statNames = ['체력', '공격', '방어', '특수공격', '특수방어', '스피드'];
