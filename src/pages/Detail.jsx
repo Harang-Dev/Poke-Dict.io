@@ -1,9 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Button } from '../components/ui/button';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { isPokemonId, koreanName, pokemonOptions, speciesOptions } from '../api/pokeApi';
 import { defaultEntries, entryById } from '../dex/catalogue';
 import { useCollection } from '../dex/collection';
+import Disclosure from '../components/Disclosure';
 import DetailEvolution from '../components/DetailEvolution';
 import DetailImageBox from '../components/DetailImageBox';
 import DetailTypeBox from '../components/DetailTypeBox';
@@ -39,14 +41,18 @@ export default function Detail() {
   return (
     <main className="detail">
       {state?.fromList ? (
-        <button className="detail__back" type="button" onClick={() => navigate(-1)}>← 도감 목록으로</button>
+        <Button variant="link" className="detail__back" type="button" onClick={() => navigate(-1)}>← 도감 목록으로</Button>
       ) : (
         <Link className="detail__back" to="/">← 도감 목록으로</Link>
       )}
       <header className="detail__heading">
-        {number != null && <p>{formatPokemonNumber(number)}</p>}
         <h1 tabIndex={-1} ref={heading}>{name}</h1>
-        {entry && !entry.default && <p>{entry.name}</p>}
+        {(number != null || (entry && !entry.default)) && (
+          <div className="section-heading">
+            {number != null && <span className="meta-badge">{formatPokemonNumber(number)}</span>}
+            {entry && !entry.default && <p className="meta-badge">{entry.name}</p>}
+          </div>
+        )}
       </header>
       <DetailContent id={id} entry={entry} number={number} name={name} pokemon={pokemon} species={species} />
     </main>
@@ -75,9 +81,9 @@ function DetailContent({ id, entry, number, name, pokemon, species }) {
           retry={() => species.refetch()} retrying={species.isFetching} />
       )}
       <div className="detail__grid">
-        <div className="section-stack">
-          <DetailImageBox key={id} pokemon={pokemon.data} name={name} />
-          {species.data && <PokemonDescription key={id} species={species.data} />}
+        <div className="section-stack" key={id}>
+          <DetailImageBox pokemon={pokemon.data} name={name} />
+          {species.data && <PokemonDescription species={species.data} />}
         </div>
         <DetailTypeBox pokemon={pokemon.data} />
       </div>
@@ -97,31 +103,27 @@ function CollectionActions({ entry }) {
   const shiny = data.shiny.includes(entry.id);
   return (
     <div className="action-row">
-      <button type="button" aria-pressed={favorite} onClick={() => toggle('favorites', entry.id)}>
+      <Button type="button" aria-pressed={favorite} onClick={() => toggle('favorites', entry.id)}>
         {favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-      </button>
-      <button type="button" aria-pressed={caught} onClick={() => toggle('caught', caughtId)}>
+      </Button>
+      <Button type="button" aria-pressed={caught} onClick={() => toggle('caught', caughtId)}>
         {caught ? '잡은 기록 해제' : '잡은 포켓몬으로 등록'}
-      </button>
-      <button type="button" aria-pressed={shiny} onClick={() => toggle('shiny', entry.id)}>
+      </Button>
+      <Button type="button" aria-pressed={shiny} onClick={() => toggle('shiny', entry.id)}>
         {shiny ? '색이 다른 모습 기록 해제' : '색이 다른 모습 등록'}
-      </button>
-      <Link className="button-link" to={`/compare?pokemon=${entry.id}`}>포켓몬 비교</Link>
+      </Button>
+      <Button asChild><Link to={`/compare?pokemon=${entry.id}`}>포켓몬 비교</Link></Button>
     </div>
   );
 }
 
 function GameDetails({ id, pokemon, species }) {
-  const [open, setOpen] = useState(false);
   return (
-    <details className="panel game-details" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary>게임별 기술과 출현 정보</summary>
-      {open && (
-        <Suspense fallback={<p role="status">게임 정보를 불러오는 중…</p>}>
-          <VersionDex id={id} pokemon={pokemon} species={species} />
-        </Suspense>
-      )}
-    </details>
+    <Disclosure className="panel game-details" title="게임별 기술과 출현 정보">
+      <Suspense fallback={<p role="status">게임 정보를 불러오는 중…</p>}>
+        <VersionDex id={id} pokemon={pokemon} species={species} />
+      </Suspense>
+    </Disclosure>
   );
 }
 

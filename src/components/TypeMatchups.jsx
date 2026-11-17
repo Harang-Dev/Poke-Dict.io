@@ -9,8 +9,7 @@ export default function TypeMatchups({ pokemon }) {
 
   return (
     <section className="panel">
-      <h2>타입 상성</h2>
-      <p>타입 조합에 따른 받는 피해예요.</p>
+      <h2>방어 상성</h2>
       {groups.length > 0 ? (
         <dl className="matchup-groups">
           {groups.map(({ multiplier, types }) => (

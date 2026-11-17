@@ -1,3 +1,4 @@
+import { Button } from './ui/button';
 import { useEffect, useRef, useState } from 'react';
 import PokeCard from './PokeCard';
 
@@ -38,7 +39,7 @@ export default function PokeCardList({ entries, fromList = false, shown, onShowM
           </li>
         ))}
       </ul>
-      {hasMore && <div className="list-status" ref={target}><button type="button" onClick={showMore}>더 보기</button></div>}
+      {hasMore && <div className="list-status" ref={target}><Button type="button" onClick={showMore}>더 보기</Button></div>}
     </>
   );
 }

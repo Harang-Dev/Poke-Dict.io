@@ -1,9 +1,12 @@
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { moveOptions } from '../api/pokeApi';
 import { entryById, normalizeSearch, typeNames } from '../dex/catalogue';
 import { moveById, moves, readableName } from '../dex/gameData';
+import SelectField from '../components/SelectField';
 import RequestError from '../components/RequestError';
 import PokeCardList from '../components/PokeCardList';
 
@@ -25,16 +28,15 @@ export function MoveList() {
 
   return (
     <main className="workspace">
-      <h1>기술 도감</h1>
+      <header className="section-heading">
+        <h1>기술 도감</h1>
+        <span className="meta-badge" role="status">{found.length}개 기술</span>
+      </header>
       <div className="panel filter-row">
-        <label>기술 검색<input type="search" maxLength={80} value={query} onChange={(event) => update('q', event.target.value)} /></label>
-        <label>타입<select value={type} onChange={(event) => update('type', event.target.value)}>
-          <option value="">모든 타입</option>
-          {Object.entries(typeNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select></label>
+        <label>기술 검색<Input type="search" maxLength={80} value={query} onChange={(event) => update('q', event.target.value)} /></label>
+        <SelectField label="타입" value={type} onChange={(value) => update('type', value)}
+          options={[['', '모든 타입'], ...Object.entries(typeNames)]} />
       </div>
-      <p role="status">{found.length}개 기술</p>
-      <p>수치는 PokéAPI 기술 도감 기본값 기준이에요.</p>
       {found.length > 0 && (
         <div className="table-scroll" tabIndex={0} role="region" aria-label="기술 목록">
           <table>
@@ -42,7 +44,7 @@ export function MoveList() {
             <tbody>{found.slice(0, count).map((move) => (
               <tr key={move.id}>
                 <th scope="row"><Link to={`/moves/${move.id}`}>{move.name}</Link></th>
-                <td>{typeNames[move.type] ?? move.type}</td>
+                <td><span className="type-badge" data-type={move.type}>{typeNames[move.type] ?? move.type}</span></td>
                 <td>{move.power ?? '—'}</td>
                 <td>{move.accuracy == null ? '—' : `${move.accuracy}%`}</td>
                 <td>{move.pp ?? '—'}</td>
@@ -51,7 +53,7 @@ export function MoveList() {
           </table>
         </div>
       )}
-      {count < found.length && <div className="list-status"><button type="button" onClick={() => setCount(count + 25)}>더 보기</button></div>}
+      {count < found.length && <div className="list-status"><Button type="button" onClick={() => setCount(count + 25)}>더 보기</Button></div>}
     </main>
   );
 }
@@ -70,13 +72,15 @@ export function MoveDetail() {
   return (
     <main className="workspace section-stack">
       <Link className="detail__back" to="/moves">← 기술 도감으로</Link>
-      <h1>{summary?.name ?? '기술을 찾을 수 없어요.'}</h1>
+      <header className="section-heading">
+        <h1>{summary?.name ?? '기술을 찾을 수 없어요.'}</h1>
+        {summary && <span className="type-badge" data-type={summary.type}>{typeNames[summary.type] ?? summary.type}</span>}
+      </header>
       {summary && (
         <>
           <section className="panel">
-            <p>수치는 PokéAPI 기술 도감 기본값 기준이에요. 게임에 따라 달라질 수 있어요.</p>
+            <span className="meta-badge move-stats-badge">기본 수치</span>
             <dl className="measurements">
-              <div><dt>타입</dt><dd>{typeNames[summary.type] ?? summary.type}</dd></div>
               <div><dt>위력</dt><dd>{summary.power ?? '—'}</dd></div>
               <div><dt>명중률</dt><dd>{summary.accuracy == null ? '—' : `${summary.accuracy}%`}</dd></div>
               <div><dt>PP</dt><dd>{summary.pp ?? '—'}</dd></div>
@@ -87,9 +91,11 @@ export function MoveDetail() {
             {query.isError && <RequestError message="기술 상세를 불러오지 못했어요."
               retry={() => query.refetch()} retrying={query.isFetching} />}
           </section>
-          {data && <section>
-            <h2>배울 수 있는 포켓몬</h2>
-            <p>PokéAPI에 등록된 게임 전체 기준이에요. 버전별 습득 방법은 각 포켓몬 상세에서 확인할 수 있어요.</p>
+          {data && <section className="section-stack" aria-labelledby="move-learners-heading">
+            <div className="section-heading">
+              <h2 id="move-learners-heading">배울 수 있는 포켓몬</h2>
+              <span className="meta-badge">전체 버전</span>
+            </div>
             <PokeCardList key={id} entries={learners} />
           </section>}
         </>

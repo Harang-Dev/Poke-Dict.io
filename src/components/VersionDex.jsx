@@ -1,10 +1,12 @@
+import { Button } from './ui/button';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { encounterOptions, evolutionOptions } from '../api/pokeApi';
 import { speciesByNumber, typeNames } from '../dex/catalogue';
 import { encounterConditionLabel, encounterMethodLabel, learnMethods, locationLabel, moveBySlug, readableName } from '../dex/gameData';
-import { versions } from '../dex/versions';
+import { gameVersionName, versions } from '../dex/versions';
+import SelectField from './SelectField';
 import KantoMap from './KantoMap';
 import RequestError from './RequestError';
 
@@ -15,14 +17,11 @@ export default function VersionDex({ id, pokemon, species }) {
 
   return (
     <div className="section-stack">
-      <label>게임 버전
-        <select value={versionId} onChange={(event) => setVersionId(event.target.value)}>
-          {versions.map(({ id, name }) => <option value={id} key={id}>{name}</option>)}
-        </select>
-      </label>
+      <SelectField label="게임 버전" value={versionId} onChange={setVersionId}
+        options={versions.map(({ id }) => [id, gameVersionName(id)])} />
       <div className="action-row">
-        <button type="button" aria-pressed={view === 'moves'} onClick={() => setView('moves')}>배우는 기술</button>
-        <button type="button" aria-pressed={view === 'locations'} onClick={() => setView('locations')}>출현·획득 방법</button>
+        <Button type="button" aria-pressed={view === 'moves'} onClick={() => setView('moves')}>배우는 기술</Button>
+        <Button type="button" aria-pressed={view === 'locations'} onClick={() => setView('locations')}>출현·획득 방법</Button>
       </div>
       {view === 'moves' ? <VersionMoves key={versionId} pokemon={pokemon} version={version} /> : (
         <Locations key={versionId} id={id} version={version} pokemon={pokemon} species={species} />
@@ -56,12 +55,8 @@ function VersionMoves({ pokemon, version }) {
   }
   return (
     <>
-      <label>습득 방법
-        <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-          <option value="">전체</option>
-          {[...groups.keys()].map((name) => <option key={name} value={name}>{learnMethods[name] ?? readableName(name)}</option>)}
-        </select>
-      </label>
+      <SelectField label="습득 방법" value={filter} onChange={setFilter}
+        options={[['', '전체'], ...[...groups.keys()].map((id) => [id, learnMethods[id] ?? readableName(id)])]} />
       {[...groups].filter(([method]) => !filter || filter === method).map(([method, records]) => (
         <div key={method}>
           <h3>{learnMethods[method] ?? readableName(method)}</h3>
@@ -142,7 +137,7 @@ function EvolutionAcquisition({ pokemon, species, chain, version }) {
   return (
     <section>
       <h3>진화로 획득</h3>
-      <p><Link to={`/pokemon/${previous.id}`}>{previous.name}</Link>에서 진화해요.</p>
+      <p>진화 전 <Link to={`/pokemon/${previous.id}`}>{previous.name}</Link></p>
       <ul>{details.map((detail, index) => <li key={index}>{evolutionConditions(detail).join(' · ')}</li>)}</ul>
     </section>
   );

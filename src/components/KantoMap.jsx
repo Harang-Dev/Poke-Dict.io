@@ -1,3 +1,4 @@
+import { Button } from './ui/button';
 import { useState } from 'react';
 
 const routes = [
@@ -37,13 +38,12 @@ export default function KantoMap({ records }) {
   return (
     <section className="kanto-map" aria-label="관동 출현 지도">
       <h3>관동 출현 지도</h3>
-      <p>레드·블루 타운맵 좌표 기준이며, 위치가 확인된 장소만 표시해요.</p>
       <div className="kanto-map__grid">
         {[...locations].map(([key, { coordinates: [x, y], names }], index) => (
-          <button key={key} type="button" className="kanto-map__marker" style={{ left: `${6 + x / 15 * 88}%`, top: `${6 + y / 15 * 88}%` }}
+          <Button key={key} type="button" className="kanto-map__marker" style={{ left: `${6 + x / 15 * 88}%`, top: `${6 + y / 15 * 88}%` }}
             aria-label={[...names].join(', ')} aria-pressed={key === selection} onClick={() => setSelection(key)}>
             {index + 1}
-          </button>
+          </Button>
         ))}
       </div>
       {selected && <p role="status">{[...selected.names].join(' · ')}</p>}

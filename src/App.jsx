@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { HashRouter, Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import Detail from './pages/Detail';
 import Home from './pages/Home';
+import { Toaster } from './components/ui/sonner';
 import { CollectionProvider } from './dex/collection';
 
 const Collection = lazy(() => import('./pages/Collection'));
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        <Toaster />
       </CollectionProvider>
     </HashRouter>
   );
