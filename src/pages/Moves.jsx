@@ -10,6 +10,10 @@ import { moveById, moves, readableName } from '../dex/gameData';
 import SelectField from '../components/SelectField';
 import RequestError from '../components/RequestError';
 import PokeCardList from '../components/PokeCardList';
+import EmptyState from '../components/EmptyState';
+import Breadcrumbs from '../components/Breadcrumbs';
+import { pageMetadata } from '../seo';
+import { moveScope, moveSummary } from '../dex/insights';
 
 export function MoveList() {
   const [params, setParams] = useSearchParams();
@@ -28,7 +32,8 @@ export function MoveList() {
   }
 
   return (
-    <main className="workspace">
+    <main className="workspace page-column">
+      <Breadcrumbs items={pageMetadata('/moves/').breadcrumbs} />
       <header className="section-heading">
         <h1>기술 도감</h1>
         <span className="meta-badge" role="status">{found.length}개 기술</span>
@@ -38,7 +43,18 @@ export function MoveList() {
         <SelectField label="타입" value={type} onChange={(value) => update('type', value)}
           options={[['', '모든 타입'], ...Object.entries(typeNames)]} />
       </div>
-      {found.length > 0 && (
+      {found.length === 0 ? (
+        <EmptyState title="검색 결과가 없어요."
+          description={<>검색어나 타입을 바꾸거나<br />전체 기술을 다시 둘러보세요.</>}>
+          <Button variant="default" onClick={() => {
+            const next = new URLSearchParams(params);
+            next.delete('q');
+            next.delete('type');
+            setCount(25);
+            setParams(next, { replace: true });
+          }}>검색 조건 초기화</Button>
+        </EmptyState>
+      ) : (
         <div className="table-scroll" tabIndex={0} role="region" aria-label="기술 목록">
           <table>
             <thead><tr><th scope="col">이름</th><th scope="col">타입</th><th scope="col">위력</th><th scope="col">명중률</th><th scope="col">PP</th></tr></thead>
@@ -72,11 +88,14 @@ export function MoveDetail() {
 
   return (
     <main className="workspace section-stack">
+      {summary && <Breadcrumbs items={pageMetadata(movePath(id), summary).breadcrumbs} />}
       <Link className="detail__back" to="/moves/">← 기술 도감으로</Link>
       <header className="section-heading">
         <h1>{summary?.name ?? '기술을 찾을 수 없어요.'}</h1>
         {summary && <span className="type-badge" data-type={summary.type}>{typeNames[summary.type] ?? summary.type}</span>}
       </header>
+      {summary && <section className="panel"><h2>기술 한눈에 보기</h2><p>{moveSummary(summary)}</p>
+        <p className="content-source">{moveScope} <Link to="/learn/version-data/">게임별 데이터 읽는 법</Link></p></section>}
       {summary && (
         <>
           <section className="panel">

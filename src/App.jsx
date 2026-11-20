@@ -4,15 +4,19 @@ import Detail from './pages/Detail';
 import Home from './pages/Home';
 import RouteMetadata from './components/RouteMetadata';
 import ScrollRestoration from './components/ScrollRestoration';
+import SiteFooter from './components/SiteFooter';
 import { Toaster } from './components/ui/sonner';
 import { CollectionProvider } from './dex/collection';
-import { dataSources } from './seo';
 
 const Collection = lazy(() => import('./pages/Collection'));
 const SharedBinder = lazy(() => import('./pages/Collection').then((module) => ({ default: module.SharedBinder })));
 const Compare = lazy(() => import('./pages/Compare'));
 const Quiz = lazy(() => import('./pages/Quiz'));
 const Team = lazy(() => import('./pages/Team'));
+const Guide = lazy(() => import('./pages/Guide'));
+const Learn = lazy(() => import('./pages/Learn'));
+const Directory = lazy(() => import('./pages/Directory'));
+const Information = lazy(() => import('./pages/Information'));
 const MoveList = lazy(() => import('./pages/Moves').then((module) => ({ default: module.MoveList })));
 const MoveDetail = lazy(() => import('./pages/Moves').then((module) => ({ default: module.MoveDetail })));
 
@@ -47,6 +51,7 @@ function AppRoutes() {
             <NavLink to="/moves/">기술</NavLink>
             <NavLink to="/quiz/">퀴즈</NavLink>
             <NavLink to="/team/">내 팀</NavLink>
+            <NavLink to="/learn/">가이드</NavLink>
           </nav>
         </div>
       </header>
@@ -62,12 +67,20 @@ function AppRoutes() {
           <Route path="/moves/:id" element={<MoveDetail />} />
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/team" element={<Team />} />
+          <Route path="/guide" element={<Guide />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/learn/:slug" element={<Learn />} />
+          <Route path="/types" element={<Directory kind="types" />} />
+          <Route path="/types/:value" element={<Directory kind="types" />} />
+          <Route path="/generations" element={<Directory kind="generations" />} />
+          <Route path="/generations/:value" element={<Directory kind="generations" />} />
+          <Route path="/about" element={<Information kind="about" />} />
+          <Route path="/privacy" element={<Information kind="privacy" />} />
+          <Route path="/contact" element={<Information kind="contact" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-      <footer className="site-footer" aria-label="데이터 출처">
-        {dataSources.map(([label, href]) => <a key={href} href={href}>{label}</a>)}
-      </footer>
+      <SiteFooter />
       <Toaster />
     </CollectionProvider>
   );

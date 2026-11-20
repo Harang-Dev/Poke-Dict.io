@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { entries, matchesPokemon } from '../dex/catalogue';
 import { formatPokemonNumber } from '../pokemonNumber';
 
-export default function PokemonPicker({ onPick, options = entries, excluded = [], label = '포켓몬 선택' }) {
+export default function PokemonPicker({ onPick, options = entries, excluded = [], label = '포켓몬 선택', inputRef }) {
   const [query, setQuery] = useState('');
   const term = query.trim();
   const matches = term ? options.filter((entry) => !excluded.includes(entry.id) && matchesPokemon(entry, term)).slice(0, 8) : [];
 
   return (
     <div className="pokemon-picker">
-      <label>{label}<Input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 도감 번호" /></label>
+      <label>{label}<Input ref={inputRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="이름 또는 도감 번호" /></label>
       {term && matches.length === 0 && <p role="status">선택할 포켓몬이 없어요.</p>}
       {matches.length > 0 && (
         <ul>

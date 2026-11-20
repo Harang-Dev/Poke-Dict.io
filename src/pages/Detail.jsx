@@ -14,6 +14,9 @@ import PokemonDescription from '../components/PokemonDescription';
 import RequestError from '../components/RequestError';
 import TypeMatchups from '../components/TypeMatchups';
 import { formatPokemonNumber } from '../pokemonNumber';
+import PokemonOverview from '../components/PokemonOverview';
+import Breadcrumbs from '../components/Breadcrumbs';
+import { pageMetadata } from '../seo';
 
 const VersionDex = lazy(() => import('../components/VersionDex'));
 
@@ -41,6 +44,7 @@ export default function Detail() {
 
   return (
     <main className="detail">
+      {entry && <Breadcrumbs items={pageMetadata(pokemonPath(id)).breadcrumbs} />}
       {state?.fromList ? (
         <Button variant="link" className="detail__back" type="button" onClick={() => navigate(-1)}>← 도감 목록으로</Button>
       ) : (
@@ -55,6 +59,7 @@ export default function Detail() {
           </div>
         )}
       </header>
+      {entry && <PokemonOverview entry={entry} />}
       <DetailContent id={id} entry={entry} number={number} name={name} pokemon={pokemon} species={species} />
     </main>
   );

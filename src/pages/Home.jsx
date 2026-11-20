@@ -9,6 +9,7 @@ import PokeCard from '../components/PokeCard';
 import PokeCardList, { pageSize } from '../components/PokeCardList';
 import SelectField from '../components/SelectField';
 import ShareLink from '../components/ShareLink';
+import EmptyState from '../components/EmptyState';
 import { formatPokemonNumber } from '../pokemonNumber';
 
 export default function Home() {
@@ -46,15 +47,26 @@ export default function Home() {
     setParams(next, { replace: true });
   }, [page, params, setParams]);
 
+  function resetSearch() {
+    const next = new URLSearchParams(params);
+    for (const key of ['q', 'type', 'gen', 'weakness', 'caught', 'page']) next.delete(key);
+    setParams(next, { replace: true });
+    setDrawn(null);
+  }
+
   const recent = data.recent.map((id) => entryById.get(id)).filter(Boolean);
   const shared = new URLSearchParams(Object.entries({
     q: query, type, gen: generation, weakness, sort, view: table ? 'table' : '',
   }).filter(([, value]) => value));
 
   return (
-    <main className="home">
+    <main className="home page-column">
       <header className="home-hero">
         <h1 className="home__title">POKE-DICT</h1>
+        <p className="home__intro">한국어 포켓몬 도감 · 약점과 종족값을 확인하고, 폼별 비교에서 나만의 컬렉션까지.</p>
+        <nav className="section-nav home__browse" aria-label="도감 둘러보기">
+          <Link to="/types/">타입별 도감</Link><Link to="/generations/">세대별 도감</Link><Link to="/learn/">초보자 가이드</Link>
+        </nav>
       </header>
       <section className="panel dex-search" aria-label="도감 검색">
         <label className="dex-search__main">
@@ -96,7 +108,12 @@ export default function Home() {
         </section>
       )}
       <div className="results-count"><span className="meta-badge" role="status">{matches.length.toLocaleString('ko-KR')}개 항목</span></div>
-      {table ? (
+      {!matches.length ? (
+        <EmptyState title="검색 결과가 없어요."
+          description={<>검색어나 필터를 바꾸거나<br />전체 도감을 다시 둘러보세요.</>}>
+          <Button variant="default" onClick={resetSearch}>검색 조건 초기화</Button>
+        </EmptyState>
+      ) : table ? (
         <PokemonTable matches={matches} count={page * pageSize} showMore={more} />
       ) : (
         <PokeCardList entries={matches} fromList shown={page * pageSize} onShowMore={more} />
@@ -111,9 +128,6 @@ function TypeSelect({ label, value, onChange }) {
 }
 
 function PokemonTable({ matches, count, showMore }) {
-  if (!matches.length) {
-    return <p role="status">표시할 포켓몬이 없어요.</p>;
-  }
   return (
     <>
       <div className="table-scroll" tabIndex={0} role="region" aria-label="포켓몬 표">

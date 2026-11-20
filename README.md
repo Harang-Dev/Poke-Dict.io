@@ -89,6 +89,7 @@ npm ci
 npm run dev
 npm test
 npm run build
+npm run check:site
 npm run preview
 npm audit
 ```
@@ -105,8 +106,11 @@ GitHub 저장소의 **Settings → Pages → Source**를 **GitHub Actions**로 �
 수집·비교·퀴즈·팀·공유 바인더의 직접 접속용 HTML에는 `noindex`를 적용합니다.
 Pages 프로젝트 주소에서는 `/Poke-Dict.io/sitemap.xml`을 검색 도구에 직접 제출합니다.
 크롤러 설정에 쓰이는 `robots.txt`는 호스트의 루트에서 제공해야 합니다.
+프로젝트 경로 배포에서는 루트에 반영할 파일을 `deployment-root/`에 따로 생성합니다. 이 디렉터리는 현재 Pages 배포에 자동 포함되지 않습니다.
 도메인을 연결한 뒤 GitHub Actions 저장소 변수 `POKEDICT_SITE_URL`에 최종 HTTPS 사이트 주소를 설정하면
 빌드 경로·대표 URL·사이트맵에 같이 적용됩니다. 사이트를 도메인 루트에 배포하면 사이트맵을 선언하는 `/robots.txt`도 생성합니다.
+
+타입·세대별 탐색, 자체 도감 가이드, 공유 메타데이터와 구조화 데이터, AdSense 연결 전 설정과 남은 운영 작업은 [검색·AI 검색과 AdSense 신청 준비](docs/search-and-monetization.md)에 정리했습니다. 광고는 기본적으로 실행하지 않으며, 실제 게시자 ID를 설정해도 소유 확인 메타와 루트용 ads.txt만 준비합니다.
 
 ## 6. 도감 기능과 데이터 범위
 

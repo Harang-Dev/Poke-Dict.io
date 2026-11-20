@@ -181,12 +181,17 @@ test('saves favorites by form and caught records by national species number', as
 
 test('creates a binder, adds cards, reorders them and shares the display order', async () => {
   start('/collection/?tab=binders');
+  await userEvent.click(await screen.findByRole('button', { name: '바인더 이름 입력하기' }));
+  expect(document.activeElement).toBe(screen.getByLabelText('새 바인더 이름'));
   await userEvent.type(await screen.findByLabelText('새 바인더 이름'), '내 카드');
   await userEvent.click(screen.getByRole('button', { name: '바인더 만들기' }));
 
   const search = await screen.findByRole('searchbox', { name: '도감에서 카드 추가' });
+  await userEvent.click(screen.getByRole('button', { name: '포켓몬 추가하기' }));
+  expect(document.activeElement).toBe(search);
   fireEvent.change(search, { target: { value: '025' } });
   await userEvent.click(screen.getByRole('button', { name: 'No. 025 피카츄' }));
+  expect(screen.queryByText('아직 바인더에 포켓몬이 없어요.')).toBeNull();
   fireEvent.change(search, { target: { value: '001' } });
   await userEvent.click(screen.getByRole('button', { name: 'No. 001 이상해씨' }));
   await userEvent.click(screen.getByRole('button', { name: '이상해씨 앞으로 이동' }));
@@ -205,6 +210,93 @@ test('opens a shared binder independently of the collection', async () => {
   await screen.findByRole('heading', { name: 'Starter' });
   const list = screen.getByRole('list', { name: '포켓몬 목록' });
   expect(within(list).getAllByRole('link').map((link) => link.getAttribute('href'))).toEqual([appUrl('/pokemon/4/'), appUrl('/pokemon/1/')]);
+});
+
+test('opens the data guide and backup management from the footer without changing collection records', async () => {
+  const fetch = start('/collection/');
+  const before = localStorage.getItem('poke-dict-collection');
+  const footer = screen.getByRole('contentinfo', { name: '사이트 정보' });
+
+  await userEvent.click(within(footer).getByRole('link', { name: '이용·데이터 안내' }));
+
+  await screen.findByRole('heading', { name: '이용 및 데이터 안내', level: 1 });
+  expect(document.title).toBe('이용 및 데이터 안내 | Poke-Dict');
+  expect(screen.getByRole('heading', { name: '이 브라우저에 보관하는 기록' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'PokéAPI 라이선스' }).getAttribute('href')).toBe(appUrl('/pokeapi-license.txt'));
+  expect(localStorage.getItem('poke-dict-collection')).toBe(before);
+  expect(fetch).not.toHaveBeenCalled();
+
+  await userEvent.click(within(footer).getByRole('link', { name: '백업 관리' }));
+  expect(await screen.findByRole('region', { name: '컬렉션 백업' })).toBeTruthy();
+  expect(window.location.search).toBe('?tab=backup');
+});
+
+test('keeps local Pokémon insights visible when the external API fails and clears SEO state on a private route', async () => {
+  start('/pokemon/6/');
+  const overview = screen.getByRole('region', { name: '핵심 정보' });
+  expect(within(overview).getByText(/바위 4배/)).toBeTruthy();
+  expect(within(overview).getByText(/특성·도구·필드·테라스탈은 반영하지 않습니다/)).toBeTruthy();
+  await screen.findByRole('alert');
+  expect(document.querySelector('meta[property="og:title"]').content).toContain('리자몽');
+  expect(JSON.parse(document.getElementById('page-structured-data').textContent)['@graph'].some(item => item['@type'] === 'BreadcrumbList')).toBe(true);
+
+  await userEvent.click(screen.getByRole('link', { name: '내 팀' }));
+  await screen.findByRole('heading', { name: '내 팀' });
+  expect(document.getElementById('page-structured-data')).toBeNull();
+  expect(document.querySelector('link[rel="canonical"]')).toBeNull();
+  expect(document.querySelector('meta[property="og:title"]').content).toBe('내 팀 | Poke-Dict');
+});
+
+test('navigates from a type directory through an explanatory guide to a working comparison', async () => {
+  start('/types/electric/');
+  await screen.findByRole('heading', { name: '전기 타입 포켓몬 도감', level: 1 });
+  expect(screen.getByRole('link', { name: 'No. 025 피카츄' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('link', { name: '도감 활용 가이드' }));
+  await userEvent.click(await screen.findByRole('link', { name: /종족값과 실제 능력치의 차이/ }));
+  await screen.findByRole('heading', { name: '종족값과 실제 능력치의 차이, 비교할 때 볼 것', level: 1 });
+  expect(JSON.parse(document.getElementById('page-structured-data').textContent)['@graph'].some(item => item['@type'] === 'Article')).toBe(true);
+  await userEvent.click(screen.getByRole('link', { name: '피카츄와 라이츄 비교' }));
+  expect(await screen.findByRole('region', { name: '포켓몬 비교표' })).toBeTruthy();
+  expect(window.location.search).toBe('?pokemon=25,26');
+});
+
+test('takes an empty shared binder visitor to the catalogue', async () => {
+  start('/binder/?title=Empty');
+  await screen.findByText('공유된 포켓몬이 없어요.');
+  await userEvent.click(screen.getByRole('link', { name: '도감 둘러보기' }));
+  expect(await screen.findByRole('list', { name: '포켓몬 목록' })).toBeTruthy();
+});
+
+test.each(['card', 'table'])('resets empty catalogue filters while keeping the %s view and sort order', async (view) => {
+  start(`/?q=zzzzzz&type=electric&gen=1&weakness=ground&caught=caught&page=4&sort=name&view=${view}&other=keep`);
+  await screen.findByText('검색 결과가 없어요.');
+
+  await userEvent.click(screen.getByRole('button', { name: '검색 조건 초기화' }));
+
+  expect(screen.getByRole('searchbox', { name: '포켓몬 검색' }).value).toBe('');
+  expect(Object.fromEntries(new URLSearchParams(window.location.search))).toEqual({ sort: 'name', view, other: 'keep' });
+  expect(view === 'table' ? screen.getByRole('table') : screen.getByRole('list', { name: '포켓몬 목록' })).toBeTruthy();
+  expect(screen.queryByText('검색 결과가 없어요.')).toBeNull();
+});
+
+test('resets an empty move search to the full move list', async () => {
+  start('/moves/?q=zzzzzz&type=fire&other=keep');
+  await userEvent.click(await screen.findByRole('button', { name: '검색 조건 초기화' }));
+  expect(screen.getByRole('searchbox', { name: '기술 검색' }).value).toBe('');
+  expect(window.location.search).toBe('?other=keep');
+  expect(screen.getByRole('table')).toBeTruthy();
+  expect(screen.queryByText('검색 결과가 없어요.')).toBeNull();
+});
+
+test('focuses the comparison picker from the empty state and removes the guidance after selection', async () => {
+  start('/compare/');
+  await userEvent.click(await screen.findByRole('button', { name: '포켓몬 선택하기' }));
+  const search = screen.getByRole('searchbox', { name: '첫 번째 포켓몬 선택' });
+  expect(document.activeElement).toBe(search);
+  await userEvent.type(search, '025');
+  await userEvent.click(screen.getByRole('button', { name: 'No. 025 피카츄' }));
+  expect(screen.queryByText('아직 비교할 포켓몬이 없어요.')).toBeNull();
+  expect(screen.getByRole('region', { name: '포켓몬 비교표' })).toBeTruthy();
 });
 
 test('shares catalogue results without including local collection filters or unrelated query parameters', async () => {
@@ -239,8 +331,11 @@ test('loads a shared comparison and uses type combinations for team resistances'
 
   await userEvent.click(screen.getByRole('link', { name: '내 팀' }));
   const picker = await screen.findByRole('searchbox', { name: '팀에 추가할 포켓몬' });
+  await userEvent.click(screen.getByRole('button', { name: '포켓몬 추가하기' }));
+  expect(document.activeElement).toBe(picker);
   fireEvent.change(picker, { target: { value: '006' } });
   await userEvent.click(screen.getByRole('button', { name: 'No. 006 리자몽' }));
+  expect(screen.queryByText('아직 팀에 포켓몬이 없어요.')).toBeNull();
   const teamTable = screen.getByRole('region', { name: '팀 방어 상성표' });
   const ground = within(teamTable).getByRole('row', { name: /땅/ });
   expect(within(ground).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['0마리', '0마리', '1마리']);

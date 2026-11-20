@@ -1,16 +1,19 @@
 import { pokemonPath } from '../paths';
 import { Button } from '../components/ui/button';
+import { useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { entryById, parsePokemonIds, statNames, statTotal, typeNames } from '../dex/catalogue';
 import { formatPokemonNumber } from '../pokemonNumber';
 import PokemonPicker from '../components/PokemonPicker';
 import PokemonSprite from '../components/PokemonSprite';
 import ShareLink from '../components/ShareLink';
+import EmptyState from '../components/EmptyState';
 
 export default function Compare() {
   const [params, setParams] = useSearchParams();
   const selected = parsePokemonIds(params.get('pokemon'), 2);
   const entries = selected.map((id) => entryById.get(id));
+  const searchInput = useRef(null);
   const rows = [
     ['타입', (entry) => entry.types.length ? (
       <div className="type-list">
@@ -28,13 +31,19 @@ export default function Compare() {
   }
 
   return (
-    <main className="workspace">
+    <main className="workspace page-column">
       <h1>포켓몬 비교</h1>
       {entries.length < 2 && (
         <section className="panel" aria-label="비교 대상">
           <PokemonPicker label={entries.length ? '두 번째 포켓몬 선택' : '첫 번째 포켓몬 선택'}
-            excluded={selected} onPick={(id) => select([...selected, id])} />
+            inputRef={searchInput} excluded={selected} onPick={(id) => select([...selected, id])} />
         </section>
+      )}
+      {entries.length === 0 && (
+        <EmptyState title="아직 비교할 포켓몬이 없어요."
+          description={<>포켓몬 두 마리를 선택해<br />타입과 능력치를 비교해 보세요.</>}>
+          <Button variant="default" onClick={() => searchInput.current?.focus()}>포켓몬 선택하기</Button>
+        </EmptyState>
       )}
       {entries.length > 0 && (
         <>

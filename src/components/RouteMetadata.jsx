@@ -1,25 +1,36 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { pageMetadata } from '../seo';
+import { pageHead, serializeStructuredData } from '../seo';
 
 export default function RouteMetadata() {
   const { pathname } = useLocation();
 
   useEffect(() => {
     function update(move) {
-      const { title, description, canonicalPath } = pageMetadata(pathname, move);
+      const { title, description, canonicalPath, url, social, structuredData } = pageHead(pathname, __POKEDICT_SITE_URL__, move);
       document.title = title;
       setHeadValue('meta[name="description"]', 'meta', { name: 'description' }, 'content', description);
       setHeadValue('meta[name="robots"]', 'meta', { name: 'robots' }, 'content', canonicalPath ? '' : 'noindex');
       setHeadValue('link[rel="canonical"]', 'link', { rel: 'canonical' }, 'href',
-        canonicalPath ? new URL(canonicalPath.slice(1), __POKEDICT_SITE_URL__).href : '');
+        canonicalPath ? url : '');
+      for (const [attribute, key, value] of social) {
+        setHeadValue(`meta[${attribute}="${key}"]`, 'meta', { [attribute]: key }, 'content', value);
+      }
+      const existing = document.getElementById('page-structured-data');
+      if (structuredData) {
+        const script = existing ?? document.createElement('script');
+        script.id = 'page-structured-data';
+        script.type = 'application/ld+json';
+        script.textContent = serializeStructuredData(structuredData);
+        if (!existing) document.head.append(script);
+      } else {
+        existing?.remove();
+      }
     }
 
+    update();
     const moveId = pathname.match(/^\/moves\/(\d+)\/?$/)?.[1];
-    if (!moveId) {
-      update();
-      return;
-    }
+    if (!moveId) return;
 
     let current = true;
     import('../dex/gameData').then(({ moveById }) => {

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f3f4f6"/>
+  <rect width="20" height="630" fill="#004076"/>
+  <circle cx="1060" cy="140" r="240" fill="#deecfa"/>
+  <circle cx="1110" cy="600" r="170" fill="#d6e9dc"/>
+  <g font-family="system-ui,-apple-system,sans-serif" fill="#004076">
+    <text x="80" y="150" font-size="38" font-weight="650">한국어 포켓몬 도감</text>
+    <text x="75" y="295" font-size="112" font-weight="800">Poke-Dict</text>
+    <text x="80" y="385" font-size="34" fill="#172b3d">약점 · 종족값 · 폼 비교 · 나만의 컬렉션</text>
+    <rect x="80" y="450" width="430" height="76" rx="16" fill="#004076"/>
+    <text x="115" y="500" font-size="30" fill="#fff">찾아보고, 비교하고, 모으세요.</text>
+  </g>
+</svg>

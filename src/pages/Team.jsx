@@ -1,14 +1,16 @@
 import { Button } from '../components/ui/button';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { defenseMultiplier, entries, entryById, typeNames } from '../dex/catalogue';
 import { useCollection } from '../dex/collection';
 import SelectField from '../components/SelectField';
 import PokemonPicker from '../components/PokemonPicker';
 import PokeCardList from '../components/PokeCardList';
+import EmptyState from '../components/EmptyState';
 
 export default function Team() {
   const { data, update } = useCollection();
   const [binderId, setBinderId] = useState('');
+  const searchInput = useRef(null);
   const binder = data.binders.find((item) => item.id === binderId);
   const team = data.team.map((id) => entryById.get(id)).filter(Boolean);
   const candidates = binder ? binder.cards.map((id) => entryById.get(id)).filter(Boolean) : entries;
@@ -20,7 +22,7 @@ export default function Team() {
   }
 
   return (
-    <main className="workspace">
+    <main className="workspace page-column">
       <header className="section-heading">
         <h1>내 팀</h1>
         <span className="meta-badge" aria-label={`팀 구성 ${team.length}/6`}>{team.length}/6</span>
@@ -37,8 +39,18 @@ export default function Team() {
                 <Button type="button" key={entry.id} onClick={() => add(entry.id)}>{entry.name} 추가</Button>
               ))}
             </div>
-          ) : <PokemonPicker label="팀에 추가할 포켓몬" onPick={add} excluded={data.team} />}
+          ) : <PokemonPicker inputRef={searchInput} label="팀에 추가할 포켓몬" onPick={add} excluded={data.team} />}
         </section>
+      )}
+      {team.length === 0 && (
+        <EmptyState title="아직 팀에 포켓몬이 없어요."
+          description={<>함께할 포켓몬을 골라<br />나만의 팀을 만들어 보세요.</>}>
+          {binder ? (
+            <Button variant="default" onClick={() => setBinderId('')}>전체 도감에서 찾기</Button>
+          ) : (
+            <Button variant="default" onClick={() => searchInput.current?.focus()}>포켓몬 추가하기</Button>
+          )}
+        </EmptyState>
       )}
       {team.length > 0 && <PokeCardList entries={team} renderActions={(entry) => (
         <Button className="tile-action" type="button" aria-label={`${entry.name} 팀에서 빼기`}
