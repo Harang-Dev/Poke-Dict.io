@@ -57,6 +57,13 @@ body {
   margin: 0;
 }
 
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 :where(a, [tabindex]:not([data-slot])):focus-visible {
   outline: 3px solid #006dcc;
   outline-offset: 3px;
@@ -371,6 +378,7 @@ body {
   gap: 0.5rem 1rem;
   width: min(100%, 60rem);
   margin-inline: auto;
+  margin-top: auto;
   padding: 1rem clamp(1rem, 4vw, 2rem) 1.5rem;
   font-size: 0.875rem;
 }

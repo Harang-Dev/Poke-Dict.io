@@ -3,6 +3,7 @@ import { BrowserRouter, Link, NavLink, Navigate, parsePath, Route, Routes, useLo
 import Detail from './pages/Detail';
 import Home from './pages/Home';
 import RouteMetadata from './components/RouteMetadata';
+import ScrollRestoration from './components/ScrollRestoration';
 import { Toaster } from './components/ui/sonner';
 import { CollectionProvider } from './dex/collection';
 import { dataSources } from './seo';
@@ -34,6 +35,7 @@ function AppRoutes() {
 
   return (
     <CollectionProvider>
+      <ScrollRestoration />
       <RouteMetadata />
       <header className="site-header">
         <div>

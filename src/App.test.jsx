@@ -76,7 +76,11 @@ afterAll(() => {
   }
 });
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  vi.stubGlobal('scrollTo', vi.fn());
+});
 afterEach(() => {
   cleanup();
   queryClient?.clear();
@@ -348,6 +352,78 @@ test('retains the loaded page when returning from the list to the same results',
   await userEvent.click(screen.getByRole('button', { name: /도감 목록으로/ }));
   const list = await screen.findByRole('list', { name: '포켓몬 목록' });
   expect(within(list).getAllByRole('listitem')).toHaveLength(40);
+});
+
+test('restores the catalogue scroll position after detail and keeps it when loading more cards', async () => {
+  // Given a catalogue that has already been scrolled and expanded.
+  start('/?page=2');
+  vi.stubGlobal('scrollY', 1200);
+  fireEvent.scroll(window);
+
+  // When opening a detail and returning through its back button.
+  await userEvent.click(screen.getByRole('link', { name: 'No. 025 피카츄' }));
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 0);
+  vi.stubGlobal('scrollY', 0);
+  fireEvent.scroll(window);
+  await userEvent.click(await screen.findByRole('button', { name: /도감 목록으로/ }));
+
+  // Then the saved position and loaded cards are restored without resetting on expansion.
+  const list = await screen.findByRole('list', { name: '포켓몬 목록' });
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 1200);
+  expect(within(list).getAllByRole('listitem')).toHaveLength(40);
+  vi.stubGlobal('scrollY', 1200);
+  fireEvent.scroll(window);
+  window.scrollTo.mockClear();
+  await userEvent.click(screen.getByRole('button', { name: '더 보기' }));
+  expect(within(list).getAllByRole('listitem')).toHaveLength(60);
+  expect(window.scrollTo).not.toHaveBeenCalled();
+});
+
+test('restores the expanded catalogue position after a page reload', async () => {
+  // Given a scrolled catalogue before the document is replaced.
+  start('/?page=2');
+  vi.stubGlobal('scrollY', 1200);
+  fireEvent.scroll(window);
+  fireEvent(window, new Event('pagehide'));
+  cleanup();
+  queryClient.clear();
+
+  // When a new app instance opens the same history entry.
+  vi.stubGlobal('scrollY', 0);
+  start('/?page=2');
+
+  // Then the scroll position and expanded result count survive the reload.
+  const list = await screen.findByRole('list', { name: '포켓몬 목록' });
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 1200);
+  expect(within(list).getAllByRole('listitem')).toHaveLength(40);
+});
+
+test('does not reuse a fresh history entry scroll position at a different address', async () => {
+  start('/?page=2');
+  vi.stubGlobal('scrollY', 1200);
+  fireEvent.scroll(window);
+  fireEvent(window, new Event('pagehide'));
+  cleanup();
+  queryClient.clear();
+
+  vi.stubGlobal('scrollY', 0);
+  start('/collection/');
+  await screen.findByRole('heading', { name: '내 컬렉션' });
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 0);
+});
+
+test('keeps catalogue navigation working when session storage is unavailable', async () => {
+  vi.stubGlobal('sessionStorage', {
+    getItem() { throw new Error('Storage unavailable'); },
+    setItem() { throw new Error('Storage unavailable'); },
+  });
+  start('/?page=2');
+  vi.stubGlobal('scrollY', 1200);
+  fireEvent.scroll(window);
+  await userEvent.click(screen.getByRole('link', { name: 'No. 025 피카츄' }));
+  await userEvent.click(await screen.findByRole('button', { name: /도감 목록으로/ }));
+  await screen.findByRole('list', { name: '포켓몬 목록' });
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 1200);
 });
 
 test('merges a full backup without discarding local binders or filling team slots with unknown IDs', async () => {
