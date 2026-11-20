@@ -107,6 +107,7 @@ GitHub 저장소의 **Settings → Pages → Source**를 **GitHub Actions**로 �
 Pages 프로젝트 주소에서는 `/Poke-Dict.io/sitemap.xml`을 검색 도구에 직접 제출합니다.
 크롤러 설정에 쓰이는 `robots.txt`는 호스트의 루트에서 제공해야 합니다.
 프로젝트 경로 배포에서는 루트에 반영할 파일을 `deployment-root/`에 따로 생성합니다. 이 디렉터리는 현재 Pages 배포에 자동 포함되지 않습니다.
+현재 호스트 루트의 `robots.txt`와 `ads.txt`는 [사용자 사이트 저장소](https://github.com/Harang-Dev/Harang-Dev.github.io)에서 별도로 배포합니다.
 도메인을 연결한 뒤 GitHub Actions 저장소 변수 `POKEDICT_SITE_URL`에 최종 HTTPS 사이트 주소를 설정하면
 빌드 경로·대표 URL·사이트맵에 같이 적용됩니다. 사이트를 도메인 루트에 배포하면 사이트맵을 선언하는 `/robots.txt`도 생성합니다.
 

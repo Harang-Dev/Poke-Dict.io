@@ -64,6 +64,8 @@ npm run check:site
 
 프로젝트 경로의 robots 파일이 루트 정책을 제어한다고 표시하지 않는다. [Google robots 범위](https://developers.google.com/search/docs/crawling-indexing/robots/robots_txt), [Google ads.txt 안내](https://support.google.com/adsense/answer/7532444)
 
+현재 `harang-dev.github.io`의 루트 파일은 [사용자 사이트 저장소](https://github.com/Harang-Dev/Harang-Dev.github.io)의 `main` 브랜치에서 별도로 배포한다. `robots.txt`에는 Poke-Dict sitemap을 선언했고, `ads.txt`에는 기존 AdSense 게시자를 선언했다. Poke-Dict의 `POKEDICT_ADSENSE_PUBLISHER_ID` 저장소 변수도 같은 계정으로 설정했다. 이후 게시자나 호스트 정책이 바뀌면 두 저장소의 설정을 함께 확인해야 한다.
+
 ## AdSense 연결 직전 상태
 
 현재 광고 코드, 광고 요청, 광고 개인화 쿠키, 방문 분석 스크립트를 추가하지 않았다. 빈 광고 슬롯이나 시험용 게시자 ID도 배포하지 않는다.
@@ -79,7 +81,7 @@ ID를 비워 두면 확인 메타와 ads.txt를 만들지 않는다. 이전 빌�
 
 ## 신청 전에 운영자가 확인할 남은 항목
 
-- [ ] 최종 도메인·호스트 루트 정책을 확정하고 현재 미배포 변경을 실제 사이트에 게시한다.
+- [x] 현재 GitHub Pages 주소에 사이트와 호스트 루트 파일을 게시했다. 이후 도메인을 변경하면 새 호스트 기준으로 다시 확인해야 한다.
 - [ ] Search Console 소유 확인과 sitemap 제출 후 대표 페이지의 색인·렌더링 결과를 확인한다. 이 저장소는 계정 연결이나 실제 색인 상태를 증명하지 않는다.
 - [ ] Pokémon 명칭·스프라이트·울음소리 등의 광고 수익화에 필요한 이용 권한을 확인한다. PokéAPI 데이터 라이선스나 출처 표시는 이미지·상표의 상업적 이용 허락을 자동으로 의미하지 않는다. 현재 권리자 허락을 확인한 상태가 아니다. [Pokémon 권리 안내](https://www.pokemon.com/us/legal/information), [Google 지식재산 정책](https://support.google.com/adsense/answer/10502938?hl=en)
 - [ ] GitHub Pages의 이용 범위와 콘텐츠 권리·개인정보 정책을 지키는 운영인지 확인한다. 개인 도메인을 연결해도 GitHub Pages 이용 조건은 바뀌지 않는다. [GitHub 광고 정책](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies#10-advertising-on-github), [Pages 제한](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
